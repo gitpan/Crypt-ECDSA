@@ -1,0 +1,25 @@
+NAME
+
+Crypt::ECDSA -- Digital Signature using Elliptic Curve Cryptography
+
+LANGUAGE
+
+Pure Perl, but relies on modules for SHA and BigInt support
+
+DESCRIPTION
+
+ELiiptic curves are believed to allow smaller secure key sizes for currently 
+secure algorithms than standard RSA and DSA formulations of public /private 
+key cryptography.  This module implements a subset of the DSS algorithm using 
+elliptic curve cryptography descibed in the NIST publication FIPS 186-2 (2000).
+
+
+To install the module...
+
+perl Makefile.PL
+make
+make test
+make install
+
+If you are on a windows box you should use 'nmake' rather than 'make'.
+
