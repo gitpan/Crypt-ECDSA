@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 use strict;
 use warnings;
@@ -150,31 +150,68 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
     
 =head1 SYNOPSIS
 
+    my $ecdsa = Crypt::ECDSA->new( standard => 'ECP-256' );
     
+    my $msg = "This is a test message fpr perl ecdsa."
+    
+    my ( $r, $s ) = ecdsa->signature( message => message );
+    
+    my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, message => $msg );
 
 =head1 METHODS
 
 =over 4
 
-=item<new>
+=item B<new>
   
-=item<key>
-
-=item<errstr> 
-
-=item<keygen>
-
-=item<make_text_digest>
+  Create an ECDSA object.
   
-=item<signature>
+  Arguments include:
+  
+  standard => curve type, one of 'ECP-192', 'ECP-224', 'ECP-256', 'ECP-384',
+    'ECP-521', 'EC2N-163', 'EC2N-233', 'EC2N-283', 'EC2N-409', 'EC2N-571',
+    
+  algorithm => $algo,  where $algo is a Digest::SHA interface compatible object,
+    which defaults to Digest::SHA(1) which does SHA-1 digests for ECDSA.
+    
+  .. and other arguments, used as per Crypt::ECDSA::Key.
+  
+);
+  
+  
+  
+=item B<key>
 
-  # sign is a synonym for signature
-=item<sign>
+  get the key object for this curve
 
-  # check a public key provided for validity, given a curve
-=item<verify_public_key>
+=item B<errstr> 
 
-=item<verify>
+  get the last internal error message
+
+=item B<keygen>
+
+  make a new private/ public key pair
+
+=item B<make_text_digest>
+
+  make a text digest
+
+  
+=item B<signature>
+
+  sign a message as message => message or a digest as hash => $hash
+
+=item B<sign>
+
+sign is a synonym for signature
+
+=item B<verify_public_key>
+
+  verify a public key point asa in tthe Crypt::ECDSA::Key method 
+
+=item B<verify>
+
+  verify as message given  r, s, and either message or its hash
 
 =back
 

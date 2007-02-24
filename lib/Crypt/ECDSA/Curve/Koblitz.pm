@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 use base Crypt::ECDSA::Curve;
 
@@ -333,7 +333,7 @@ GMP math library, which enables Math::BigInt::GMP.
 
 =over 4
 
-=item <new>
+=item B<new>
 
   Delegated to base class Crypt::ECDSA::Curve
 
@@ -396,7 +396,7 @@ GMP math library, which enables Math::BigInt::GMP.
 
 =over 4
 
-=item b<equation>
+=item B<equation>
 
   Return ascii string representation of the field equation
 

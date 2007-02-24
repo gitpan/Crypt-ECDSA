@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Prime;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 use base Crypt::ECDSA::Curve;
 
@@ -156,7 +156,19 @@ sub is_weak_curve {
 }
 
 
-=item <new>
+
+=head1 NAME
+
+Crypt::ECDSA::Curve::Prime -- Elliptic curves ove F(q), with q prime, for EC cryptography
+
+=head1 DESCRIPTION
+
+These are for use with Crypt::ECDSA, a Math::BigInt based cryptography module.
+These routines work most efficiently if the GMP math library is installed.
+
+=over 4
+
+=item B<new>
 
   Delegated to base class Crypt::ECDSA::Curve
 
@@ -170,8 +182,8 @@ sub is_weak_curve {
 
 =item B<subtract_on_curve>
 
- Subtract a point on the curve.  Same as addition.
-
+ Subtract a point on the curve.  Addition of an additive inverse.
+ 
 =item B<double_on_curve>
 
   Double a point on the curve.   
@@ -198,7 +210,7 @@ sub is_weak_curve {
 
 =over 4
 
-=item b<equation>
+=item B<equation>
 
   Return ascii string representation of the field equation
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 use strict;
 no warnings;
@@ -180,7 +180,7 @@ sub write_PEM {
 
 =head1 NAME
 
-Crypt::ECDSA::Point -- Elliptic curve points for EC cryptography
+Crypt::ECDSA::Key -- ECDSA Key object package for elliptic key DSA cryptography
 
 =head1 DESCRIPTION
 
@@ -196,6 +196,7 @@ GMP math library, which enables Math::BigInt::GMP.
 =item B<new>
 
   Constructor.  Takes the following named pair arguments:
+  
   
   curve => curve or a 'standard' named curve (this may be the best choice)
   if not a standard curve, will need X => integer, Y => integer, order => integer,

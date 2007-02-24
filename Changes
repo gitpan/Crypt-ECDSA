@@ -3,5 +3,8 @@ Revision history for Perl module Crypt::ECDSA
 0.10 Fri Feb 23 13:33:28 2007
     - original version
 
+0.02 Sat Feb 24 12:34:37 2007
+    - pod fixes
+
 
 

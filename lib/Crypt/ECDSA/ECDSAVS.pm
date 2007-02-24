@@ -5,7 +5,7 @@ package Crypt::ECDSA::ECDSAVS;
 # customized for the current crypto FIPS verifier file formats, which are
 # a variant of the Windows style config file format.
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 use strict;
 no warnings;
@@ -384,11 +384,13 @@ Crypt::ECDSA::ECDSAVS -- Verification system for elliptic curve cryptography DSA
 
    William Herrera B<wherrera@skylightview.com>. 
 
--head1 METHODS
+=head1 METHODS
 
 =over 4
 
 =item B<new>
+
+  make new testing object
 
 =item B<write_application_data>
 
@@ -396,11 +398,11 @@ Crypt::ECDSA::ECDSAVS -- Verification system for elliptic curve cryptography DSA
 
 =item B<KeyPair_test>
 
-  gereate key pairs
+  generate key pairs
 
 =item B<PubKey_test>
 
-  test ppublic keys for validity
+  test public keys for validity
 
 =item B<SigGen_test>
 
