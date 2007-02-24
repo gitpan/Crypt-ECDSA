@@ -8,6 +8,6 @@ WriteMakefile(
     ABSTRACT     => 'Digital Signature using Elliptic Curve Cryptography',
     PREREQ_PM    => { 
         Carp => 0, Math::BigInt => 0, Digest::SHA => 0, Math::BigInt::GMP => 0,
-        Math::GMP => 0, Data::Compare => 0 ,  #  Memoize => 0, 
+        Math::GMP => 0, Data::Compare => 0, Math::BigInt::Random => 0, 
     },
 );

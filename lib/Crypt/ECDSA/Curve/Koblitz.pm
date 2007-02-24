@@ -191,7 +191,6 @@ sub multiply_on_curve {
     return $S;
 }
 
-
 sub is_weak_curve { 
     my ($self) = @_;
     return 1 if $self->{a} == 0 and $self->{b} == 0;

@@ -5,6 +5,10 @@ Revision history for Perl module Crypt::ECDSA
 
 0.02 Sat Feb 24 12:34:37 2007
     - pod fixes
+    
+0.021 Sat Feb 24 14:18:31 2007
+    -  prerequesite added to Makefile.PL
+
 
 
 

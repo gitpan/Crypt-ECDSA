@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = 0.02;
+our $VERSION = 0.021;
 
 use strict;
 use warnings;
