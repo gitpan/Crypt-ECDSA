@@ -1,13 +1,13 @@
 package Crypt::ECDSA::Curve::Prime;
 
-our $VERSION = 0.02;
+our $VERSION = '0.04';
 
 use base Crypt::ECDSA::Curve;
 
 use strict;
 use warnings;
 use Carp 'croak';
-use Math::BigInt lib => 'GMP';
+use Math::GMPz qw( :mpz );
 
 use Crypt::ECDSA::Point;
 use Crypt::ECDSA::Util qw( bint );
@@ -32,10 +32,10 @@ sub add_on_curve {
         return $self->infinity if ( $y1 + $y2 ) % $p == 0;
         return $self->double_on_curve( $x1, $y1, $order );
     }
-    my $lm    = ( $dy2y1 * $dx2x1->bmodinv($p) ) % $p;
-    my $x_sum = ( $lm * $lm - $x1 - $x2 ) % $p;
-    my $y_sum = ( $lm * ( $x1 - $x_sum ) - $y1 ) % $p;
-
+    Rmpz_invert( $dx2x1, $dx2x1, $p );
+    my $lm    = bint( $dy2y1 * $dx2x1 % $p );
+    my $x_sum = bint( ( $lm * $lm - $x1 - $x2 ) % $p );
+    my $y_sum = bint( ( $lm * ( $x1 - $x_sum ) - $y1 ) % $p );
     return Crypt::ECDSA::Point->new(
         X     => $x_sum,
         Y     => $y_sum,
@@ -46,7 +46,8 @@ sub add_on_curve {
 
 sub subtract_on_curve {
     my ( $self, $x1, $y1, $x2, $y2, $order ) = @_;
-    return $self->add_on_curve( $self, $x1, $y1, $x2, (-$y2) % $self->{p}, $order );
+    return $self->add_on_curve( $self, $x1, $y1, $x2, ( -$y2 ) % $self->{p},
+        $order );
 }
 
 sub double_on_curve {
@@ -54,8 +55,9 @@ sub double_on_curve {
     my $p        = $self->{p};
     my $a        = $self->{a};
     my $double_y = bint( $y * 2 );
-
-    my $lm    = ( ( 3 * $x * $x + $a ) * $double_y->bmodinv($p) ) % $p;
+    Rmpz_invert( $double_y, $double_y, $p );
+    my $lm =
+      ( ( 3 * $x * $x + $a ) * $double_y ) % $p;
     my $x_sum = ( $lm * $lm - 2 * $x ) % $p;
     my $y_sum = ( $lm * ( $x - $x_sum ) - $y ) % $p;
 
@@ -80,7 +82,6 @@ sub inverse_on_curve {
 
 sub multiply_on_curve {
     my ( $self, $x, $y, $scalar, $order ) = @_;
-    $scalar->bmod($order)                         if $order;
     croak("cannot multiply by a negative number") if $scalar < 0;
     return $self->infinity unless $scalar;
     my $base_point = Crypt::ECDSA::Point->new(
@@ -145,17 +146,14 @@ sub is_weak_curve {
     my $test_val = bint(1);
     my $q        = 2**$n;
 
+    # test for the MOV condition
     for my $i ( 1 .. $b ) {
-
-        # test for the MOV condition
         $test_val *= $q;
-        $test_val->bmod($r);
+        $test_val %= $r;
         return 1 if $test_val == 1;
     }
     return;
 }
-
-
 
 =head1 NAME
 
@@ -235,7 +233,5 @@ it under the same terms as Perl itself.
 
 
 =cut
-
-
 
 1;

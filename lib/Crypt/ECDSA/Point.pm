@@ -1,10 +1,10 @@
 package Crypt::ECDSA::Point;
 
-our $VERSION = '0.02';
+our $VERSION = '0.04';
 
 use strict;
 use warnings;
-use Math::BigInt lib => 'GMP';
+use Math::GMPz qw( :mpz );
 use Carp qw( carp croak );
 use Crypt::ECDSA::Util qw( bint );
 
@@ -99,13 +99,14 @@ sub double {
 
 sub multiply {
     my ( $self, $scalar ) = @_;
-    $scalar = Math::BigInt->new($scalar);
+    $scalar = bint($scalar);
     return $self->{curve}
       ->multiply_on_curve( $self->{X}, $self->{Y}, $scalar, $self->{order} );
 }
 
 sub is_equal_to {
     my ( $p1, $p2 ) = @_;
+    return 1 unless $p1->{X} or $p1->{Y} or $p2->{X} or $p2->{Y};
     if ( $p1->{is_infinity} ) {
         return ( $p2->{is_infinity} ) ? 1 : 0;
     }

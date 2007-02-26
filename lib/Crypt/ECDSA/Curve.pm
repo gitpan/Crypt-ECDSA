@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = 0.02;
+our $VERSION = '0.04';
 
 use strict;
 use warnings;
@@ -19,10 +19,10 @@ sub new {
     my $standard = $params{standard};
     if ( $standard ) {
         if( $standard eq 'generic_prime' ) {
-            return _make_generic_prime( $class, %params );
+            return _make_generic_prime_curve( $class, %params );
         }
         elsif( $standard eq 'generic_binary' ) {
-            return _make_generic_binary( $class, %params );
+            return _make_generic_binary_curve( $class, %params );
         }
         else {
             return _make_named( $class, %params );
@@ -70,7 +70,8 @@ sub _make_named {
     }
     else {
         # FIXME: probably need to calculate this here instead of this poor guess
-        $self->{point_order} = bint( $self->{p} )->bdiv( $self->{cofactor} );
+        # but calculating the order of a point takes a while-- this may be 0
+        $self->{point_order} = bint( $self->{p} / $self->{cofactor} );
     }
     $self->{order} = $self->{point_order};
     $self->{curve_order} = $self->{point_order} * $self->{cofactor};    
@@ -80,7 +81,7 @@ sub _make_named {
     return $self;
 }
 
-sub _make_generic_prime {
+sub _make_generic_prime_curve {
     my ( $class, %params ) = @_;
     my $self = {};
     bless $self, $class;
@@ -92,7 +93,7 @@ sub _make_generic_prime {
     return $self;
 }
 
-sub _make_generic_binary {
+sub _make_generic_binary_curve {
     my ( $class, %params ) = @_;
     my $self = {};
     bless $self, $class;
@@ -157,6 +158,8 @@ sub infinity {
         is_infinity => 1,
     );
 }
+
+###   predefined curves ###
 
 $named_curve = {
     generic_prime => {

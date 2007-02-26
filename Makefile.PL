@@ -3,11 +3,12 @@ use 5.006;
 
 WriteMakefile(
     NAME         => 'Crypt::ECDSA',
+    LIBS         => [ '-lgmp'  ],    
+    OBJECT       => 'ECDSA.obj',
     VERSION_FROM => 'lib/Crypt/ECDSA.pm', # finds $VERSION
     AUTHOR       => 'William Hererra (whererra@skylightview.com)',
     ABSTRACT     => 'Digital Signature using Elliptic Curve Cryptography',
     PREREQ_PM    => { 
-        Carp => 0, Math::BigInt => 0, Digest::SHA => 0, Math::BigInt::GMP => 0,
-        Math::GMP => 0, Data::Compare => 0, Math::BigInt::Random => 0, 
+        Carp => 0, Math::GMPz => 0, Digest::SHA => 0, Data::Compare => 0, 
     },
 );

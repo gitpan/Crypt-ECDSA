@@ -1,15 +1,17 @@
-use Test::More tests => 50;
+use Test::More tests => 49;
 
 use strict;
 no warnings;
 require 5.006;
+
+use Math::GMPz qw( :mpz );
+use Crypt::ECDSA::Util qw( bint );
 
 use_ok( 'Crypt::ECDSA' );
 use_ok('Crypt::ECDSA::Curve' );
 use_ok('Crypt::ECDSA::Curve::Prime' );
 use_ok( 'Crypt::ECDSA::Point' );
 use_ok( 'Crypt::ECDSA::Key' );
-use_ok( 'Crypt::ECDSA::Util' );
 use_ok( 'Crypt::ECDSA::ECDSAVS' );
 
 
@@ -66,6 +68,7 @@ ok( $p6 * 0 == $p7, "multiply by 0" );
 my $sum = $p6->curve->infinity;
 $sum->order(7);
 for my $i ( 0 .. 15 ) {
+my $pp6 = $p6 * $i;
     ok( $p6 * $i == $sum, "multiply p6 by $i to get $sum->{X}, $sum->{Y}" );
     $sum += $p6;
 }
@@ -78,8 +81,8 @@ for my $i ( 0 .. 15 ) {
 my ( $cur, $pG, $p_prod );
 
 # ECP-160  (not a NIST curve but used by some private industry standards)
-my $i2 = Math::BigInt->new('0x4a96b5688ef573284664698968c38bb913cbfc82');
-my $i3 = Math::BigInt->new('0x23a628553168947d59dcc912042351377ac5fb32');
+my $i2 = bint('0x4a96b5688ef573284664698968c38bb913cbfc82');
+my $i3 = bint('0x23a628553168947d59dcc912042351377ac5fb32');
 $p1 = Crypt::ECDSA::Point->new( X => $i2, Y => $i3, curve => $curve_P160 );
 isa_ok( $p1, 'Crypt::ECDSA::Point' );
 
@@ -105,24 +108,24 @@ isa_ok( $p1, 'Crypt::ECDSA::Point' );
 isa_ok( $p1->curve, 'Crypt::ECDSA::Curve' );
 
 my $d =
-  Math::BigInt->new(
+  bint(
     '651056770906015076056810763456358567190100156695615665659');
 my $x_ans =
-  Math::BigInt->new('0x62B12D60690CDCF330BABAB6E69763B471F994DD702D16A5');
+  bint('0x62B12D60690CDCF330BABAB6E69763B471F994DD702D16A5');
 
 my $qq = $p1 * $d;
 
 ok( $qq->X == $x_ans, "multiply points on curve ECP-192" );
 
 $x_ans =
-  Math::BigInt->new('0x885052380FF147B734C330C43D39B2C4A89F29B0F749FEAD');
+  bint('0x885052380FF147B734C330C43D39B2C4A89F29B0F749FEAD');
 my $y_ans =
-  Math::BigInt->new('0x9CF9FA1CBEFEFB917747A3BB29C072B9289C2547884FD835');
+  bint('0x9CF9FA1CBEFEFB917747A3BB29C072B9289C2547884FD835');
 $d =
-  Math::BigInt->new(
+  bint(
     '2563697409189434185194736134579731015366492496392189760599');
 my $e =
-  Math::BigInt->new(
+  bint(
     '6266643813348617967186477710235785849136406323338782220568');
 
 $p2 = $p1 * $d + $qq * $e;
@@ -130,7 +133,7 @@ ok( $p2->X == $x_ans, "x checked in expression with P-192" );
 ok( $p2->Y == $y_ans, "y checked in expression with P-192" );
 
 $d =
-  Math::BigInt->new(
+  bint(
     '6140507067065001063065065565667405560006161556565665656654');
 $qq = $p1 * $d;
 ok( $qq->X() == $x_ans, "x checked in point multiply on curve P-192" );

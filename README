@@ -4,7 +4,8 @@ Crypt::ECDSA -- Digital Signature using Elliptic Curve Cryptography
 
 LANGUAGE
 
-Pure Perl, but relies on modules for SHA and BigInt support
+Perl, with two C routines in XS
+
 
 DESCRIPTION
 

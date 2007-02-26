@@ -1,31 +1,64 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = 0.02;
+our $VERSION = '0.04';
 
 use strict;
 use warnings;
 require Exporter;
 our @ISA    = qw(Exporter);
-our @EXPORT = qw( make_pq_seed_counter_new make_seed_and_pq_with_sha1
-  validate_pq_seed_counter_sha1 is_probably_prime bint two_pow 
-  bigint_from_coeff );
+our @EXPORT = qw( 
+  two_pow random_bits bigint_from_coeff is_probably_prime 
+  make_pq_seed_counter_new make_seed_and_pq_with_sha1 
+  validate_pq_seed_counter_sha1 bint bint_hex
+);
 use Carp qw(carp croak);
 use POSIX qw(ceil);
-use Math::BigInt lib => 'GMP';
-use Math::BigInt::Random;
+use Math::GMPz qw( :mpz :primes );
 use Digest::SHA;
 
-sub bint    { Math::BigInt->new(shift) }
-sub two_pow { Math::BigInt->new(2)->bpow(shift) }
+sub bint { 
+    my( $n ) = @_;
+    $n ||= 0;
+    if( !ref $n and length $n > 2 ) {
+        if( $n =~ /^0b/i ) {
+            $n =~ s/^0b//;
+            return Rmpz_init_set_str( $n, 2 );
+        }
+        elsif($n =~ /^0x/i ) {
+            $n =~ s/^0x//;
+            return Rmpz_init_set_str( $n, 16 );
+        }
+        else {
+            return Rmpz_init_set_str( $n, 10 );
+        }
+    }
+    return Math::GMPz->new($n);    
+}
 
+sub two_pow { 
+    my ($exp) = @_;
+    my $a = bint(1);
+    Rmpz_mul_2exp( $a, $a, $exp );    
+    return $a;
+}
 
 # returns a bigint given a list of exponents for a
-#polynomial of base 2, so [ 3 1 0 ] = 2**3 + 2**1 + 2**0 = 8 + 2 + 1
+# polynomial of base 2, so [ 3 1 0 ] = 2**3 + 2**1 + 2**0 = 8 + 2 + 1
 sub bigint_from_coeff {
     my $arrayref = shift;
     my $n        = bint(0);
     for my $t (@$arrayref) { $n += two_pow($t) }
     return $n;
+}
+
+sub random_bits {
+    my( $bitlength ) = @_;
+    my @r;
+    push @r, Rmpz_init();
+    my $state = rand_init( bint( int rand(10000) ) );
+    Rmpz_urandomb( @r, $state, $bitlength, 1 );
+    rand_clear($state);
+    return $r[0];
 }
 
 sub make_pq_seed_counter_new {
@@ -47,37 +80,35 @@ sub make_pq_seed_counter_new {
     my $twopowN  = two_pow($N);
     my $twopowN1 = two_pow( $N - 1 );
     my $twopowL1 = two_pow( $L - 1 );
-    my $q        = 0;
-    my $p        = 0;
-
+    my $q        = Rmpz_init();
+    my $p        = Rmpz_init();
+    my $X        = Rmpz_init();
+    my $c        = Rmpz_init();
+    my $W        = Rmpz_init();
     while (1) {
-        my $seed = random_bigint( length_bin => 1, length => $seedlen )
-          or die "cannot make random domain seed: $!";
-        my $seed_digest = $alg->add_bits( substr( $seed->as_bin, 2 ) );
-        my $U = bint( "0x" . $seed_digest->hexdigest )->bmod($twopowN);
-        my $q = $U->bior($twopowN1)->bior(1);
+        my $seed = random_bits( $seedlen );
+        my $seed_digest = $alg->add_bits( Rmpz_get_str( $seed, 2 ) );
+        my $U = Rmpz_init_set_str( $seed_digest->hexdigest, 16 ) % $twopowN;
+        $q = $U | $twopowN1 | 1;
         next unless is_probably_prime($q);
         my $offset = 1;
         for ( my $counter = 0 ; $counter < 4096 ; ++$counter ) {
             my @v = ();
             for my $j ( 0 .. $n ) {
                 $alg->reset;
-                $alg->add_bits(
-                    substr(
-                        bint( $seed + $offset + $j )->bmod($twopowS)->as_bin, 2
-                    )
+                $alg->add_bits( 
+                  Rmpz_get_str( bint( $seed + $offset + $j ) % $twopowS , 2 )
                 );
-                push @v, bint( '0x' . $alg->hexdigest );
+                push @v, Rmpz_init_set_str( $alg->hexdigest, 16 );
             }
-            my $W = Math::BigInt->bzero;
+            Rmpz_set_ui( $W, 0 );
             for ( my $i = 0 ; $i < $n ; ++$i ) {
-                $W->badd( $v[$i] * two_pow( $outlen * $i ) );
+                $W += $v[$i] * two_pow( $outlen * $i );
             }
-            $W->badd(
-                ( $v[$n] )->bmod( two_pow($b) ) * two_pow( $n * $outlen ) );
-            my $X = bint( $W + two_pow( $L - 1 ) );
-            my $c = bint( $X->copy()->bmod( $q * 2 ) );
-            $p = bint( $X - ( $c - 1 ) );
+            $W +=  ( $v[$n] % two_pow($b) ) * two_pow( $n * $outlen );
+            $X = $W + two_pow( $L - 1 );
+            $c = $X % ( $q * 2 );
+            $p = $X - ( $c - 1 );
             if ( $p >= $twopowL1 and is_probably_prime($p) ) {
                 return ( $p, $q, $seed, $counter );
             }
@@ -94,20 +125,24 @@ sub make_seed_and_pq_with_sha1 {
     my $b        = $L - 1 - $n * 160;
     my $twopowG  = two_pow($g);
     my $twopowL1 = two_pow( $L - 1 );
-    my $q        = 0;
-    my $p        = 0;
-
+    my $q        = Rmpz_init();
+    my $p        = Rmpz_init();
+    my $X        = Rmpz_init();
+    my $c        = Rmpz_init();
+    my $U        = Rmpz_init(); 
+    my $W        = Rmpz_init(); 
+    my $s        = Rmpz_init();     
     while (1) {
-        my $seed = random_bigint( length_bin => 1, length => $g )
-          or die "cannot make random domain seed: $!";
+        my $seed = random_bits( $g );
         my $alg = Digest::SHA->new(1);
-        $alg->add_bits( substr( $seed->as_bin, 2 ) );
-        my $seed_digest = bint( '0x' . $alg->hexdigest );
+        $alg->add_bits( Rmpz_get_str( $seed, 2 ) );
+        my $seed_digest = Rmpz_init_set_str( $alg->hexdigest, 16 );
         $alg->reset;
-        $alg->add_bits(
-            substr( bint( $seed + 1 )->bmod( two_pow($g) )->as_bin, 2 ) );
-        my $U = bint( $seed_digest->bxor( bint( '0x' . $alg->hexdigest ) ) );
-        $q = $U->bior( two_pow(159) )->bior(1);
+        $s = $seed + 1;
+        $s %= two_pow($g);
+        $alg->add_bits( Rmpz_get_str( $s, 2 ) );
+        $U = $seed_digest ^ Rmpz_init_set_str( $alg->hexdigest, 16 );
+        $q = $U | two_pow( 159 ) | 1;
         next unless is_probably_prime($q);
         my $offset = 2;
 
@@ -115,21 +150,19 @@ sub make_seed_and_pq_with_sha1 {
             my @v = ();
             for my $k ( 0 .. $n ) {
                 $alg->reset;
-                $alg->add_bits(
-                    substr(
-                        bint( $seed + $offset + $k )->bmod($twopowG)->as_bin, 2
-                    )
-                );
-                push @v, bint( '0x' . $alg->hexdigest );
+                $s = $seed + $offset + $k;
+                $s %= $twopowG;
+                $alg->add_bits( Rmpz_get_str( $s, 2 ) );
+                push @v, Rmpz_init_set_str( $alg->hexdigest, 16 );
             }
-            my $W = Math::BigInt->bzero;
+            Rmpz_set_ui( $W, 0 );
             for ( my $i = 0 ; $i < $n ; ++$i ) {
-                $W->badd( $v[$i] * two_pow( $i * 160 ) );
+                $W +=  $v[$i] * two_pow( $i * 160 );
             }
-            $W->badd( ( $v[$n] )->bmod( two_pow($b) ) * two_pow( $n * 160 ) );
-            my $X = bint( $W + two_pow( $L - 1 ) );
-            my $c = bint( $X->copy()->bmod( $q * 2 ) );
-            $p = bint( $X - ( $c - 1 ) );
+            $W += ( $v[$n] % two_pow($b) ) * two_pow( $n * 160 );
+            $X = $W + two_pow( $L - 1 );
+            $c = $X % ( $q * 2 );
+            $p = $X - ( $c - 1 );
             if ( $p >= $twopowL1 and is_probably_prime($p) ) {
                 return ( $p, $q, $seed, $counter );
             }
@@ -156,33 +189,17 @@ sub _check_L_N_pair {
 sub is_probably_prime {
     my ($w) = @_;
     return unless $w;
-    $w = bint($w) unless ref $w and ref $w =~ /BigInt/;
+    $w = bint($w) unless ref $w;
     return unless $w > 1;
     return 1 if $w < 4;
 
-    # Knuth's Algorithm P (originally by Miller and Rabin)
-    # FIPS 182-2, page 13
-    my $checks = 50;
-    my $a      = 0;
-    my $m      = $w - 1;
-    while ( $m->is_even ) {
-        $m->bdiv(2);
-        ++$a;
-    }
-
-    # we now have w = 2^a * m + 1
-    for ( 0 .. $checks ) {    # 51 tries
-        my $b = random_bigint( min => 2, max => $w - 2 );
-        my $z = $b->bmodpow( $m, $w );
-        next if $z == 1 or $z == $w - 1;
-        for ( my $j = 1 ; $j < $a ; ++$j ) {
-            $z->bmul($z)->bmod($w);
-            return if $z == 1;
-            last   if $z == $w - 1;
-        }
-    }
-    return 1;
+    return Rmpz_probab_prime_p( $w, 48 );
 }
+
+sub validate_pq_seed_counter_sha1 {
+    croak "Not implemented yet";
+}
+
 
 =head1 NAME
 

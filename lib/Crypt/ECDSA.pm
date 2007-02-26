@@ -1,16 +1,22 @@
 package Crypt::ECDSA;
 
-our $VERSION = 0.021;
+our $VERSION = '0.04';
 
 use strict;
 use warnings;
 use Carp qw( carp croak );
-use Math::BigInt lib => 'GMP';
+use Math::GMPz qw( :mpz );
 use Digest::SHA;
 
-use Math::BigInt::Random;
 use Crypt::ECDSA::Key;
-use Crypt::ECDSA::Util qw( bint );
+use Crypt::ECDSA::Util qw( bint random_bits );
+
+require Exporter;
+require DynaLoader;
+
+our @ISA = qw(Exporter DynaLoader);
+our @EXPORT = qw( multiply_F2m invert_F2m );
+bootstrap Crypt::ECDSA $VERSION;
 
 sub new {
     my ( $class, %args ) = @_;
@@ -46,16 +52,17 @@ sub make_text_digest {
     my ( $self, $text ) = @_;
     $self->{algo}->reset;
     $self->{algo}->add( $text );
-    return bint( '0x' . $self->{algo}->hexdigest );
+    return Rmpz_init_set_str( $self->{algo}->hexdigest, 16 );
 }
 
 sub _make_k_kinv_pair {
     my( $self, $n ) = @_;
-    my $len = length( $n->as_hex );
-    my $k = random_bigint( as_hex => 1, length => $len + 8 )
-      ->bmod( $n->bsub(1) )->badd(1);
-    my $kinv = $k->copy()->bmodinv($n);
-    return unless $k and $kinv and $kinv !~ /NaN/;
+    my $len = length( Rmpz_get_str( $n, 16 ) );
+    my $k = Rmpz_init();
+    my $kinv = Rmpz_init();
+    $k = random_bits( ($len + 8) * 16 ) % ( $n - 1 ) + 1;
+    Rmpz_invert( $kinv, $k, $n );
+    return unless Rmpz_sgn($k) and Rmpz_sgn($kinv);
     return ($k, $kinv);
 }
 
@@ -69,7 +76,7 @@ sub signature {
         carp(" Bad private key for signature");
         return;
     }
-    my $q =  bint( $key->curve->q );
+    my $q  = bint( $key->curve->q );
     my $n  = bint( $G->{order} );
     unless($n) {
         carp("Cannot sign curve without a point of known order");
@@ -86,9 +93,9 @@ sub signature {
         my($k, $kinv) = $self->_make_k_kinv_pair($q);
         my $kG = $G * $k;
         $r  = bint( $kG->{X} );
-        next if $r->is_zero;
+        next unless Rmpz_sgn($r);
         $s = ( $kinv * ( $e + ( $d * $r )% $n ) ) % $n;
-        next if $s->is_zero;
+        next unless Rmpz_sgn($s);
         return ( $r, $s );
     }
     $self->{_last_ECDSA_error} =
@@ -124,16 +131,19 @@ sub verify {
       || ( $args{message} ? $self->make_text_digest($args{message}) : 
            croak("Need a message or the hash of a message for the signature" ) )
     ;
-    my $w  = $s->copy()->bmodinv($n);
-    if($w eq 'NaN') {
-        carp("Error: s and n are not coprime in signature verify");
+    my $w  = Rmpz_init;
+    my $invert_ok = Rmpz_invert( $w, $s, $n );
+    unless( $invert_ok ) {
+        carp( "Error: s and n are not coprime in signature verify" );
         return;
     }
-    my $u1 = ( $e * $w ) % $n;
-    my $u2 = ( $r * $w ) % $n;
+    my $u1 = Rmpz_init;
+    my $u2 = Rmpz_init;
+    $u1 = ( $e * $w ) % $n;
+    $u2 = ( $r * $w ) % $n;
     my $prod = $G * $u1 + $key->Q * $u2;
-    return if bint( $prod->{X} )->bmod( $n )->bcmp( $r );
-    return 1;
+    return 1 if $prod->{X} % $n == $r;
+    return 0;
 }
 
 =head1 NAME
@@ -142,10 +152,25 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
 =head1 DESCRIPTION
 
+    An implementation of the elliptic curve digital signature algorithm in Perl,
+    using the Math::GMPz library and a little C for speed.
+
     Implements the pending FIPS 186-3 ECDSA standard for digital signatures using
     elliptical key crytography.  Like FIPS 186-3, this is preliminary-- not yet 
     ready for full use.  It does contain a working implementation of the elliptical 
-    key crypto found in the current 186-2 standard.
+    key crypto found in the current 186-2 standard.  The final details of the 186-3 
+    standard are still being worked out.  Perhaps a preliminary version of signature
+    in the NEW standard might be the following, which uses SHA-256 instead of the
+    current SHA-1 digest:
+    
+    my $ecdsa = Crypt::ECDSA->new( 
+      standard => 'ECP-256',
+      algorithm => Digest::SHA->new(256);
+    );
+    my $msg = "This is a test message fpr perl ecdsa."    
+    my ( $r, $s ) = ecdsa->signature( message => $msg );
+
+    print "Signature (r, s) is: \nr = $r\ns = $s\n";
     
     
 =head1 SYNOPSIS
@@ -154,7 +179,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
     
     my $msg = "This is a test message fpr perl ecdsa."
     
-    my ( $r, $s ) = ecdsa->signature( message => message );
+    my ( $r, $s ) = ecdsa->signature( message => $msg );
     
     my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, message => $msg );
 
@@ -182,36 +207,57 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
   
 =item B<key>
 
-  get the key object for this curve
+  my $key = $ecdsa->key;
+
+  Get the key object in use by this ecdsa object
 
 =item B<errstr> 
 
-  get the last internal error message
+  print $ecdsa->errstr;
+
+  Get the last internal error message
 
 =item B<keygen>
 
-  make a new private/ public key pair
+  if( $want_new_key ) {  $
+    my( $secret, $base_point ) = ecdsa->keygen(); 
+
+  Make a new private/ public key pair
 
 =item B<make_text_digest>
 
-  make a text digest
+    my $msg = "This is a test message fpr perl ecdsa."
+    
+    my  $digest = ecdsa->make_text_digest( $msg );
+
+  Make a text digest via the algorithm passed to new ( default is SHA-1 )
 
   
 =item B<signature>
 
-  sign a message as message => message or a digest as hash => $hash
+    
+    my ( $r, $s ) = ecdsa->signature( message => $msg );
+    
+  Sign a message as message => message or a digest as hash => $digest
 
 =item B<sign>
 
-sign is a synonym for signature
+  Sign is a synonym for signature
 
 =item B<verify_public_key>
 
-  verify a public key point asa in tthe Crypt::ECDSA::Key method 
+  Verify a public key point, as in the Crypt::ECDSA::Key method 
 
 =item B<verify>
 
-  verify as message given  r, s, and either message or its hash
+  Verify as message given  r, s, and either message or its digest
+
+
+    my $msg = "This is a test message fpr perl ecdsa."
+    my $digest = ecdsa->make_text_digest( $msg );
+    my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, message => $msg );
+    my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, hash => $digest );
+
 
 =back
 

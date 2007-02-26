@@ -1,36 +1,18 @@
 use Test::More tests => 10;
 
 use strict;
-no warnings;
+use warnings;
 require 5.006;
 use Data::Compare qw( Compare );
 
 use_ok( 'Crypt::ECDSA::ECDSAVS' );
 
-# Run a simulated partial verification set
-# See Bassham, NIST, 2004 
+# Run a simulated ECDSAVS verification set
+# See Bassham, NIST, 2004 ( ECDSAVS )
 
 my $ecdsavs = Crypt::ECDSA::ECDSAVS->new();
 
 my $callback = sub { ok( 1, shift ) };
-
-my $alternate_filename = {
-    MakeApplication  => 't/Application.txt',
-    KeyPair_request  => 't/KeyPair.req.brief',
-    KeyPair_response => 't/KeyPair.rsp.brief',
-    PubKey_request   => 't/PKV.req.brief',
-    PubKey_response  => 't/PKV.rsp.brief',
-    PubKey_correct   => 't/PKV.rsp.correct.brief',
-    SigGen_request   => 't/SigGen.req.brief',
-    SigGen_response  => 't/SigGen.rsp.brief',
-    SigVer_request   => 't/SigVer.req.brief',
-    SigVer_response  => 't/SigVer.rsp.brief',
-    SigVer_correct   => 't/SigVer.rsp.correct.brief',
-};
-
-$Crypt::ECDSA::ECDSAVS::default_filename = $alternate_filename;
-
-print STDERR "\n\nStarting partial ECDSAVS test suite. This may take a while...\n";
 
 $ecdsavs->do_all_tasks( $callback );
 

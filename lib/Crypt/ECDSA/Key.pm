@@ -1,19 +1,16 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = 0.02;
+our $VERSION = '0.04';
 
 use strict;
 no warnings;
 
 use Carp 'croak';
-use Math::BigInt lib => 'GMP';
-use Math::BigInt::Random;
+use Math::GMPz qw( :mpz );
 
 use Crypt::ECDSA::Curve::Prime;
-use Crypt::ECDSA::Curve::Binary;
 use Crypt::ECDSA::Curve::Koblitz;
-use Crypt::ECDSA::Util qw( bint );
-
+use Crypt::ECDSA::Util qw( bint random_bits );
 
 our $standard_curve = $Crypt::ECDSA::Curve::named_curve;
 
@@ -71,10 +68,10 @@ sub new {
     my $order = $args{order} || $self->{curve}->{point_order};
     croak("Point G(x,y) must have positive order")
       unless $order and $order > 0;
-    croak(  "point (G_x "
-          . $x->as_hex
-          . ", G_y "
-          . $y->as_hex
+    croak(  "point (G_x 0x"
+          . Rmpz_get_str( $x, 16 )
+          . ", G_y 0x"
+          . Rmpz_get_str( $y, 16 )
           . ") not on the curve, cannot create ECDSA" )
       unless $self->{curve}->is_on_curve( $x, $y );
 
@@ -141,9 +138,9 @@ sub new_key_values {
 sub new_secret_value {
     my ($self) = @_;
     my $n      = $self->{G}->{order};
-    my $len    = length( $n->as_hex );
+    my $len    = length( Rmpz_get_str( $n, 16 ) );
     $self->{d} =
-      ( random_bigint( as_hex => 1, length => $len + 8 ) % ( $n - 1 ) ) + 1;
+      ( random_bits( ($len + 8) * 16 ) % ( $n - 1 ) ) + 1;
     return $self->{d};
 }
 
@@ -236,11 +233,19 @@ GMP math library, which enables Math::BigInt::GMP.
   
 =item B<new_key_values>
 
+sub new_key_values {
+ 
+  my( $d, $Qx, $Qy ) = $key->new_secret_value();
+
   Regenerate a new private and public key and return the scalars
   ( secret value d, public point x coordinate, public point y coordinate )
   Be careful!  The old and new secret keys are not stored permanently by the module.
   
 =item B<verify_public_key>
+
+  if( $key->verify_public_key { $Qx, $Qy ) ) {
+    print "Public key verified ok";
+  }
 
   Verify a provided public key when the curve, but not the private key are known
 

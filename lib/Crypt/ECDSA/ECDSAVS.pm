@@ -5,21 +5,19 @@ package Crypt::ECDSA::ECDSAVS;
 # customized for the current crypto FIPS verifier file formats, which are
 # a variant of the Windows style config file format.
 
-our $VERSION = 0.02;
+our $VERSION = '0.04';
 
 use strict;
 no warnings;
 use Carp qw/ carp croak /;
-use Math::BigInt lib => 'GMP';
+use Math::GMPz qw( :mpz );
 use Digest::SHA;
 
 use Crypt::ECDSA;
 use Crypt::ECDSA::Util qw( bint );
 
-use Crypt::ECDSA::Curve::Koblitz;
 
-my $DEBUG = 1;
-$Crypt::ECDSA::Curve::Koblitz::MULTIPLY_DEBUG = $DEBUG;
+my $DEBUG = 0;
 
 my %supported = (
     'P-192' => 'ECP-192',
@@ -168,12 +166,12 @@ sub SigGen_test {
             my $qx   = $Q->X;
             my $qy   = $Q->Y;
             $sh1->reset;
-            my $bits = substr $text->as_bin, 2;
+            my $bits = Rmpz_get_str( $text, 2 );
             while ( length($bits) < 1024 ) { $bits = '0' . $bits }
             $sh1->add_bits($bits);
             my $hash_digest = $sh1->hexdigest;
             my ( $r, $s ) =
-              $ecdsa->signature( hash => bint( '0x' . $hash_digest ) );
+              $ecdsa->signature( hash => Rmpz_init_set_str( $hash_digest, 16 ) );
             $retval .= "Msg = "
               . ihex($text)
               . "\nQx = "
@@ -223,10 +221,10 @@ sub SigVer_test {
             my $r    = $R->[$i];
             my $s    = $S->[$i];
             $sh1->reset;
-            my $bits = substr $text->as_bin, 2;
+            my $bits = Rmpz_get_str( $text, 2 );
             while ( length($bits) < 1024 ) { $bits = '0' . $bits }
             $sh1->add_bits($bits);
-            my $hash_digest = bint( '0x' . $sh1->hexdigest );
+            my $hash_digest = Rmpz_init_set_str( $sh1->hexdigest, 16 );
             my $verified    = 'F';
 
             if ( $ecdsa->key->curve->is_on_curve( $qx, $qy ) ) {
@@ -279,15 +277,15 @@ sub do_all_tasks {
 # works for big ECDSAVS numbers, but likely breaks with smaller values
 sub string_to_bigint {
     my $s = shift;
-    return bint($s)          if $s =~ /^[0123456789]+$/;
-    return bint( '0x' . $s ) if $s =~ /^[0123456789a-fA-F]+$/;
+    return Rmpz_init_set_str($s, 10)  if $s =~ /^[0123456789]+$/;
+    return Rmpz_init_set_str($s, 16)  if $s =~ /^[0123456789a-fA-F]+$/;
     warn("Unknown number format for bigint constuctor: $s") if $DEBUG;
-    return bint($s);    # by default we try to pass to bint anyway
+    return bint( $s );  # by default we try to pass to bint anyway
 }
 
-# hex print for BigInt without leading '0x'
+# hex print for file output
 sub ihex {
-    return substr( shift->as_hex(), 2 );
+    return Rmpz_get_str( shift, 16 );
 }
 
 sub process_lines {

@@ -3,6 +3,8 @@ LICENSE
 README
 Todo
 Changes
+ECDSA.xs
+gmp.h
 lib/Crypt/ECDSA.pm
 lib/Crypt/ECDSA/Point.pm
 lib/Crypt/ECDSA/Key.pm
@@ -15,7 +17,6 @@ t/01_prime_field.t
 t/02_util.t
 t/03_binary_field.t
 t/04_ecdsa.t
-t/05_ecdsa_full_slow.t_
 t/KeyPair.req
 t/KeyPair.rsp.correct
 t/PKV.req
