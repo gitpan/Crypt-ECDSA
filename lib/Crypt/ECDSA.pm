@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.04';
+our $VERSION = '0.041';
 
 use strict;
 use warnings;
@@ -299,9 +299,10 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
 =head1  TODO
 
-    With the GMP library installed for Math::BigInt::GMP, this module is fast enough for 
-    many purposes.  For others (high volume servers) some of its routines would benefit from 
-    the speed boost of a rewrite in XS, if there is demand for this.
+    Currently I know of no working non-Cygwin redent versions of the library needed by 
+    Math::GMPz.
+    
+    The Koblitz curve point multiplication algorithm could be optimized a bit more.
 
 =head1 AUTHOR
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.04';
+our $VERSION = '0.041';
 
 use base Crypt::ECDSA::Curve;
 
@@ -169,10 +169,7 @@ Crypt::ECDSA::Curve::Koblitz -- binary (F(2**N)) curves for EC cryptography
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::BigInt based cryptography module.
-These routines work most efficiently if the GMP math library is installed, and
-in particular the point multiply function may be quite tedious without the 
-GMP math library, which enables Math::BigInt::GMP.
+  These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
 
 =head1 METHODS
 

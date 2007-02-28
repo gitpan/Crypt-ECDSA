@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.04';
+our $VERSION = '0.041';
 
 use strict;
 use warnings;
@@ -372,9 +372,7 @@ Crypt::ECDSA::Curve -- Base class for ECC curves
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::BigInt based cryptography module.
-These routines work most efficiently if the GMP math library is installed, which 
-enables Math::BigInt::GMP.
+ These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
 
 =head1 METHODS
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Prime;
 
-our $VERSION = '0.04';
+our $VERSION = '0.041';
 
 use base Crypt::ECDSA::Curve;
 
@@ -161,8 +161,7 @@ Crypt::ECDSA::Curve::Prime -- Elliptic curves ove F(q), with q prime, for EC cry
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::BigInt based cryptography module.
-These routines work most efficiently if the GMP math library is installed.
+  These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
 
 =over 4
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = '0.04';
+our $VERSION = '0.041';
 
 use strict;
 no warnings;
@@ -168,12 +168,100 @@ sub verify_public_key {
 }
 
 sub read_PEM {
-    croak "Not implemented yet";
+    require Convert::PEM;
+        
+    
 }
 
 sub write_PEM {
-    croak "Not implemented yet";
+    require Convert::PEM;
+
 }
+
+sub serialize_public_key {
+
+}
+
+sub serialize_private_key {
+
+# See http://www.secg.org/collateral/sec1.pdf
+
+    my $pem_text = <<PEM_TEXT;
+    
+Parameters ::= CHOICE {
+    ecParameters ECParameters,
+    namedCurve CURVES.&id({CurveNames}),
+    implicitCA NULL
+}
+ECParameters ::= SEQUENCE {
+    version INTEGER { ecpVer1(1) } (ecpVer1),
+    fieldID FieldID {{FieldTypes}},
+    curve Curve,
+    base ECPoint,
+    order INTEGER,
+    cofactor INTEGER OPTIONAL,
+}
+Curve ::= SEQUENCE {
+    a FieldElement,
+    b FieldElement,
+    seed BIT STRING OPTIONAL
+}
+ECPoint ::= OCTET STRING
+CURVES ::= CLASS {
+    &id OBJECT IDENTIFIER UNIQUE
+}
+WITH SYNTAX { ID &id }
+CurveNames CURVES ::= {
+    ... -- named curves
+}
+SubjectPublicKeyInfo ::= SEQUENCE {
+    algorithm AlgorithmIdentifier {{ECPKAlgorithms}},
+    subjectPublicKey BIT STRING
+}
+AlgorithmIdentifier{ ALGORITHM:IOSet } ::= SEQUENCE {
+    algorithm ALGORITHM.&id({IOSet}),
+    parameters ALGORITHM.&Type({IOSet}{\@algorithm})
+}
+ALGORITHM ::= TYPE-IDENTIFIER
+ECPKAlgorithms ALGORITHM ::= {
+    ecPublicKeyType,
+    ...
+}
+ecPublicKeyType ALGORITHM ::= {
+    Parameters IDENTIFIED BY id-ecPublicKey
+}
+id-ecPublicKey OBJECT IDENTIFIER ::= { id-publicKeyType 1 }
+id-publicKeyType OBJECT IDENTIFIER ::= { ansi-X9-62 keyType(2) }
+
+ECPrivateKey ::= SEQUENCE {
+    version INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
+    privateKey OCTET STRING,
+    parameters [0] Parameters OPTIONAL,
+    publicKey [1] BIT STRING OPTIONAL
+}
+
+ecdsa-with-SHA1 OBJECT IDENTIFIER ::= { id-ecSigType 1 }
+id-ecSigType OBJECT IDENTIFIER ::= { ansi-X9-62 signatures(4) }
+
+ECDSA-Sig-Value ::= SEQUENCE {
+    r INTEGER,
+    s INTEGER
+}
+
+PEM_TEXT
+
+
+}
+
+sub deserialize_public_key {
+
+}
+
+sub deserialize_private_key {
+    
+}
+
+
 
 =head1 NAME
 
@@ -181,10 +269,7 @@ Crypt::ECDSA::Key -- ECDSA Key object package for elliptic key DSA cryptography
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::BigInt based cryptography module.
-These routines work most efficiently if the GMP math library is installed, and
-in particular the point multiply function may be quite tedious without the 
-GMP math library, which enables Math::BigInt::GMP.
+These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
 
 =head1 METHODS
 
@@ -278,5 +363,6 @@ it under the same terms as Perl itself.
 
 
 =cut
+
 
 1;

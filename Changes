@@ -12,6 +12,11 @@ Revision history for Perl module Crypt::ECDSA
 0.04 Sun Feb 25 20:26:05 2007
     - XS added
     - Dropped Math::BigInt::GMP and Math::GMP combo for Math::GMPz (faster)
+    
+0.041 Tue 27 Feb 2007 21:12:57
+    - clean up XS
+    - pod update
+
 
 
 

@@ -43,7 +43,7 @@ SV * multiply_F2m( SV * x_in, SV * y_in, SV * mod_in ) {
     }
 
     New(1, mpz_t_obj, 1, mpz_t);
-    if(mpz_t_obj == NULL) croak("Failed to allocate memory in Rmpz_init_set function");
+    if(mpz_t_obj == NULL) croak("Failed to allocate memory in multiply_F2m function");
     obj_ref = newSViv(0);
     obj = newSVrv(obj_ref, "Math::GMPz");
     mpz_init_set(*mpz_t_obj, product);
@@ -62,9 +62,6 @@ SV * invert_F2m( SV * x_in, SV * mod_in ) {
     mpz_t * x   = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
     mpz_t * mod = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
     
-    mpz_t_obj = malloc( sizeof(mpz_t) );
-    if(mpz_t_obj == NULL) croak("Failed to allocate memory in Rmpz_init_set function");
-
     mpz_init_set_si( b, 1 );
     mpz_init( c );
     mpz_init_set( u, *x );
@@ -89,7 +86,7 @@ SV * invert_F2m( SV * x_in, SV * mod_in ) {
         mpz_xor( b, b, cj );
     }
     New( 1, mpz_t_obj, 1, mpz_t );
-    if(mpz_t_obj == NULL) croak("Failed to allocate memory in Rmpz_init_set function");
+    if(mpz_t_obj == NULL) croak("Failed to allocate memory in invert_F2m function");
     obj_ref = newSViv(0);
     obj = newSVrv( obj_ref, "Math::GMPz" );
     mpz_init_set( *mpz_t_obj, b );

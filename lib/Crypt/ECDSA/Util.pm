@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = '0.04';
+our $VERSION = '0.041';
 
 use strict;
 use warnings;
@@ -55,7 +55,7 @@ sub random_bits {
     my( $bitlength ) = @_;
     my @r;
     push @r, Rmpz_init();
-    my $state = rand_init( bint( int rand(10000) ) );
+    my $state = rand_init( bint( int rand(10000) + (time % 100) ) );
     Rmpz_urandomb( @r, $state, $bitlength, 1 );
     rand_clear($state);
     return $r[0];
@@ -207,10 +207,7 @@ Crypt::ECDSA::Util -- Utility functions for Crypt::ECDSA
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::BigInt based cryptography module
-
-These routines work most efficiently if the GMP math library is installed.  
-Otherwise, they may be too slow for comfort on most current hardware.
+These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module
 
 =head1 METHODS
 
