@@ -1,11 +1,10 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.041';
+our $VERSION = '0.042';
 
 use strict;
 use warnings;
 use Carp 'croak';
-use Math::BigInt lib => 'GMP';
 
 use Crypt::ECDSA::Point;
 use Crypt::ECDSA::Util qw( bint bigint_from_coeff two_pow );

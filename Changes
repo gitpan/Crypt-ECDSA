@@ -17,6 +17,9 @@ Revision history for Perl module Crypt::ECDSA
     - clean up XS
     - pod update
 
+0.042 Thu Mar 1 2007
+    - code cleanup --  unused modules
+    
 
 
 

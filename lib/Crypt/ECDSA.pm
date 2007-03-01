@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.041';
+our $VERSION = '0.042';
 
 use strict;
 use warnings;
@@ -137,11 +137,11 @@ sub verify {
         carp( "Error: s and n are not coprime in signature verify" );
         return;
     }
-    my $u1 = Rmpz_init;
-    my $u2 = Rmpz_init;
-    $u1 = ( $e * $w ) % $n;
-    $u2 = ( $r * $w ) % $n;
-    my $prod = $G * $u1 + $key->Q * $u2;
+    my $u_g = Rmpz_init;
+    my $u_r = Rmpz_init;
+    $u_g = ( $e * $w ) % $n;
+    $u_r = ( $r * $w ) % $n;
+    my $prod = $G * $u_g + $key->Q * $u_r;
     return 1 if $prod->{X} % $n == $r;
     return 0;
 }
@@ -299,8 +299,9 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
 =head1  TODO
 
-    Currently I know of no working non-Cygwin redent versions of the library needed by 
-    Math::GMPz.
+    Currently I know of no working non-Cygwin Windows versions of the library needed by 
+    Math::GMPz.  The GMP library is available for most other systems. I may try to 
+    create a PPD file for PPM.
     
     The Koblitz curve point multiplication algorithm could be optimized a bit more.
 
