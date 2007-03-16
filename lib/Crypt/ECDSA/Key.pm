@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = '0.041';
+our $VERSION = '0.045';
 
 use strict;
 no warnings;
@@ -16,6 +16,11 @@ our $standard_curve = $Crypt::ECDSA::Curve::named_curve;
 
 use warnings;
 
+our $ecdsa_asn;
+our $parameters_label  = "EC PARAMETERS";
+our $private_pem_label = "EC PRIVATE KEY";
+our $public_pem_label  = "EC PUBLIC KEY";
+
 sub new {
     my ( $class, %args ) = @_;
     my $self = {};
@@ -24,8 +29,16 @@ sub new {
     # if G(x,y) specified use specified values (X, Y)
     my $x = bint( $args{X} || 0 );
     my $y = bint( $args{Y} || 0 );
+    if( $args{PEM} ) {
+        #read parameters from a PEM file
+        my $pem         = Crypt::ECDSA::PEM->new( 
+          Filename => $args{PEM}, Password => $args{Password} );
+        $args{standard} = $pem->{private_pem_tree}->{standard};
+        $args{Q}        = $pem->{private_pem_tree}->{Q};
+        $args{d}        = $pem->{private_pem_tree}->{d};
+        $args{order}    = $pem->{private_pem_tree}->{order};
+    }
     if ( $args{standard} ) {
-
         # using a NIST or other standard curve (good idea)
         $self->{standard} = $args{standard};
         if ( $standard_curve->{ $self->{standard} } ) {
@@ -84,19 +97,10 @@ sub new {
     );
 
     # if given a Q public point, set this, otherwise need to create this
-    if ( $args{Q} ) {
-        $self->{Q} = $args{Q};
-        $self->{d} = undef;      # we don't know d here :(
-    }
-    else {
-        if ( $args{d} ) {
-            $self->{d} = bint( $args{d} );
-        }
-        else {
-            $self->new_secret_value();
-        }
-        $self->{Q} = $self->{G} * $self->{d};
-    }
+    $self->{d} = bint( $args{d} ) if defined $args{d};
+    $self->new_secret_value() unless defined $self->{d} and $self->{d} > 0;
+    $self->{Q} = $args{Q} if defined $args{Q};
+    $self->{Q} = $self->{G} * $self->{d} unless defined $self->{Q};
     return $self;
 }
 
@@ -111,6 +115,8 @@ sub Qy { return shift->{Q}->{Y} }
 sub order { return shift->{G}->{order} }
 
 sub secret { return shift->{d} }
+
+sub G { return shift->{G} }
 
 sub set_public_Q {
     my ( $self, $pub_x, $pub_y ) = @_;
@@ -145,7 +151,7 @@ sub new_secret_value {
 }
 
 # check a public key provided for validity, given our known curve
-# a valid key is on the curve and yeilds infinity when multiplied
+# a valid key is on the curve and yields infinity when multiplied
 # by the order of the base point G for that curve
 sub verify_public_key {
     my ( $self, $Qx, $Qy ) = @_;
@@ -168,100 +174,36 @@ sub verify_public_key {
 }
 
 sub read_PEM {
-    require Convert::PEM;
-        
-    
+    my( $self, %args ) = @_;
+    if($args{filename} and $args{private}) {
+        my $pem         = Crypt::ECDSA::PEM->new( 
+          Filename => $args{filename}, Password => $args{Password} );
+        $self->{Q}        = $pem->{private_pem_tree}->{Q};
+        $self->{d}        = $pem->{private_pem_tree}->{d};
+        $self->{order}    = $pem->{private_pem_tree}->{order};
+        $self->{curve}    = $pem->{private_pem_tree}->{curve};
+        $self->{G} = Crypt::ECDSA::Point->new(
+            X     => $self->{curve}->{Gx},
+            Y     => $self->{curve}->{Gy},
+            curve => $self->{curve},
+            order => $self->{curve}->{order},
+        );
+    }
+    return $self;
 }
 
 sub write_PEM {
-    require Convert::PEM;
-
+    my( $self, %args ) = @_;
+    if( $args{filename} and $args{private} ) {
+        my $pem = Crypt::ECDSA::PEM->new();      
+        my %pem_args;
+        $pem_args{key} = $self;
+        $pem_args{Filename} = $args{Filename};
+        $pem_args{Password} = $args{Password};
+        return $pem->write_PEM( %pem_args );
+    }
+    return;
 }
-
-sub serialize_public_key {
-
-}
-
-sub serialize_private_key {
-
-# See http://www.secg.org/collateral/sec1.pdf
-
-    my $pem_text = <<PEM_TEXT;
-    
-Parameters ::= CHOICE {
-    ecParameters ECParameters,
-    namedCurve CURVES.&id({CurveNames}),
-    implicitCA NULL
-}
-ECParameters ::= SEQUENCE {
-    version INTEGER { ecpVer1(1) } (ecpVer1),
-    fieldID FieldID {{FieldTypes}},
-    curve Curve,
-    base ECPoint,
-    order INTEGER,
-    cofactor INTEGER OPTIONAL,
-}
-Curve ::= SEQUENCE {
-    a FieldElement,
-    b FieldElement,
-    seed BIT STRING OPTIONAL
-}
-ECPoint ::= OCTET STRING
-CURVES ::= CLASS {
-    &id OBJECT IDENTIFIER UNIQUE
-}
-WITH SYNTAX { ID &id }
-CurveNames CURVES ::= {
-    ... -- named curves
-}
-SubjectPublicKeyInfo ::= SEQUENCE {
-    algorithm AlgorithmIdentifier {{ECPKAlgorithms}},
-    subjectPublicKey BIT STRING
-}
-AlgorithmIdentifier{ ALGORITHM:IOSet } ::= SEQUENCE {
-    algorithm ALGORITHM.&id({IOSet}),
-    parameters ALGORITHM.&Type({IOSet}{\@algorithm})
-}
-ALGORITHM ::= TYPE-IDENTIFIER
-ECPKAlgorithms ALGORITHM ::= {
-    ecPublicKeyType,
-    ...
-}
-ecPublicKeyType ALGORITHM ::= {
-    Parameters IDENTIFIED BY id-ecPublicKey
-}
-id-ecPublicKey OBJECT IDENTIFIER ::= { id-publicKeyType 1 }
-id-publicKeyType OBJECT IDENTIFIER ::= { ansi-X9-62 keyType(2) }
-
-ECPrivateKey ::= SEQUENCE {
-    version INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
-    privateKey OCTET STRING,
-    parameters [0] Parameters OPTIONAL,
-    publicKey [1] BIT STRING OPTIONAL
-}
-
-ecdsa-with-SHA1 OBJECT IDENTIFIER ::= { id-ecSigType 1 }
-id-ecSigType OBJECT IDENTIFIER ::= { ansi-X9-62 signatures(4) }
-
-ECDSA-Sig-Value ::= SEQUENCE {
-    r INTEGER,
-    s INTEGER
-}
-
-PEM_TEXT
-
-
-}
-
-sub deserialize_public_key {
-
-}
-
-sub deserialize_private_key {
-    
-}
-
-
 
 =head1 NAME
 
@@ -286,7 +228,9 @@ These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
   d => secret key, a integer secret multiplier.  If secret not specified, 
   the object will generate a random secret key.
 
+  If a PEM file is specified, new will read the key parameters from that file:
   
+  my $key_from_PEM = Crypt::ECDSA::Key->new( PEM => $pem_filename );
 
 =item B<curve>
 
@@ -336,11 +280,17 @@ sub new_key_values {
 
 =item B<read_PEM>
 
-  (to be implemented)
+  $key->read_pem( filename =>$pem_filename, private => 1 );
+  
+  Read a key from a PEM file.  private => $n , if present and nonzero, means to
+  read the secret key from the file, otherwise only the public key may be read.
 
 =item B<write_PEM>
 
- (to be implemented)
+  $bytes_written = $key->write_PEM( filename => $file, private => 1 );
+  
+  Write the key to a PEM file.  Private key is written if the 'private' 
+  argument is nonzero.
 
 =back
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Prime;
 
-our $VERSION = '0.041';
+our $VERSION = '0.045';
 
 use base Crypt::ECDSA::Curve;
 
@@ -8,6 +8,7 @@ use strict;
 use warnings;
 use Carp 'croak';
 use Math::GMPz qw( :mpz );
+use POSIX qw( ceil );
 
 use Crypt::ECDSA::Point;
 use Crypt::ECDSA::Util qw( bint );
@@ -56,8 +57,7 @@ sub double_on_curve {
     my $a        = $self->{a};
     my $double_y = bint( $y * 2 );
     Rmpz_invert( $double_y, $double_y, $p );
-    my $lm =
-      ( ( 3 * $x * $x + $a ) * $double_y ) % $p;
+    my $lm    = ( ( 3 * $x * $x + $a ) * $double_y ) % $p;
     my $x_sum = ( $lm * $lm - 2 * $x ) % $p;
     my $y_sum = ( $lm * ( $x - $x_sum ) - $y ) % $p;
 
@@ -153,6 +153,71 @@ sub is_weak_curve {
         return 1 if $test_val == 1;
     }
     return;
+}
+
+sub to_octet {
+    my ( $self, $x, $y, $compress ) = @_;
+    my $octet;
+    my $x_octet = pack 'H*', Rmpz_get_str( $x, 16 );
+    if ($compress) {
+        my $first_byte = $y % 2 ? "\x03" : "\x02";
+        return $first_byte . $x_octet;
+    }
+    else {
+        my $y_octet = pack 'H*', Rmpz_get_str( $y, 16 );
+        return "\x04" . $x_octet . $y_octet;
+    }
+}
+
+sub from_octet {
+    my ( $self, $octet ) = @_;
+    my $q_bytes       = ceil( length( Rmpz_get_str( $self->{q}, 2 ) ) / 8 );
+    my $oct_len       = length $octet;
+    my $invalid_point = 1;
+    my $x = Rmpz_init;
+    my $y = Rmpz_init;
+    if ( $oct_len == $q_bytes + 1 ) {    # compressed point
+        my $y_byte = substr( $octet, 0, 1 );
+        my $y_test;
+        $y_test = 0 if $y_byte eq "\x02";
+        $y_test = 1 if $y_byte eq "\x03";
+        my $x =
+          Rmpz_init_set_str( unpack( 'H*', substr( $octet, 1 ) ), 16 );
+        if ( $x >= 0 and $x < $self->{p} and defined $y_test ) {
+            my $alpha = Rmpz_init();
+            $alpha =
+              ( $x * $x * $x + $self->{a} * $x + $self->{b} ) % $self->{p};
+            Rmpz_sqrt( $alpha, $alpha );
+            if ( ( $alpha & 1 ) == $y_test ) {
+                $y = bint( $alpha );
+            }
+            else {
+                $y = bint( $self->{p} - $alpha );
+            }
+            $invalid_point = 0 if $y >= 0 and $y < $self->{p};
+        }
+    }
+    elsif ( $oct_len == 2 * $q_bytes + 1 ) {    # non-compressed point
+        my $m_byte = substr $octet, 0, 1;
+        if ( $m_byte eq "\x04" ) {
+            my $x_bytes = substr $octet, 1, $q_bytes;
+            my $y_bytes = substr $octet, 1 + $q_bytes, $q_bytes;
+            $x = Rmpz_init_set_str( ( unpack "H*", $x_bytes ), 16 );
+            $y = Rmpz_init_set_str( ( unpack "H*", $y_bytes ), 16 );
+            $invalid_point = 0
+              if $y >= 0
+              and $y < $self->{p}
+              and $x >= 0
+              and $x < $self->{p}
+              and $self->is_on_curve($x, $y);              
+        }
+    }
+    if ($invalid_point) {
+        $x = 0;
+        $y = 0;
+        carp("invalid octet source bytes for this point type");
+    }
+    return ( $x, $y );
 }
 
 =head1 NAME

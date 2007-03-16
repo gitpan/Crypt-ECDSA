@@ -1,6 +1,7 @@
 TODO list for Perl module Crypt::ECDSA
 
-- Windows needs a compatible library (recent GMP)
+- handle digital certificates containing arbitrary curve parameters
+
 
 
 

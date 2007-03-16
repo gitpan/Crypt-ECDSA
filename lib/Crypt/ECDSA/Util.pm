@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = '0.041';
+our $VERSION = '0.045';
 
 use strict;
 use warnings;
@@ -18,7 +18,7 @@ use Digest::SHA;
 
 sub bint { 
     my( $n ) = @_;
-    $n ||= 0;
+    $n = 0 unless defined $n;
     if( !ref $n and length $n > 2 ) {
         if( $n =~ /^0b/i ) {
             $n =~ s/^0b//;

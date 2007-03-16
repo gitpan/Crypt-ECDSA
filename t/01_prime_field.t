@@ -1,8 +1,8 @@
-use Test::More tests => 49;
+use Test::More tests => 50;
 
 use strict;
 no warnings;
-require 5.006;
+require 5.008;
 
 use Math::GMPz qw( :mpz );
 use Crypt::ECDSA::Util qw( bint );
@@ -13,6 +13,8 @@ use_ok('Crypt::ECDSA::Curve::Prime' );
 use_ok( 'Crypt::ECDSA::Point' );
 use_ok( 'Crypt::ECDSA::Key' );
 use_ok( 'Crypt::ECDSA::ECDSAVS' );
+use_ok( 'Crypt::ECDSA::PEM' );
+
 
 
 # Test Crypt::ECDSA::Curve and Crypt::ECDSA::Point routines

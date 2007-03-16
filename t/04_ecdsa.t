@@ -2,7 +2,7 @@ use Test::More tests => 10;
 
 use strict;
 use warnings;
-require 5.006;
+require 5.008;
 use Data::Compare qw( Compare );
 
 use_ok( 'Crypt::ECDSA::ECDSAVS' );

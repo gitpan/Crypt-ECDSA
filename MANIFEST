@@ -11,12 +11,14 @@ lib/Crypt/ECDSA/Key.pm
 lib/Crypt/ECDSA/Curve.pm
 lib/Crypt/ECDSA/Util.pm
 lib/Crypt/ECDSA/ECDSAVS.pm
+lib/Crypt/ECDSA/PEM.pm
 lib/Crypt/ECDSA/Curve/Prime.pm
 lib/Crypt/ECDSA/Curve/Koblitz.pm
 t/01_prime_field.t
 t/02_util.t
 t/03_binary_field.t
 t/04_ecdsa.t
+t/05_pem.t
 t/KeyPair.req
 t/KeyPair.rsp.correct
 t/PKV.req
@@ -25,6 +27,9 @@ t/SigGen.req
 t/SigGen.rsp.correct
 t/SigVer.req
 t/SigVer.rsp.correct
+t/test1ecdsa.pem
+t/test2pem.pem
+t/test1aes128ec.pem
 Makefile.PL
 
 META.yml                                 Module meta-data (added by MakeMaker)

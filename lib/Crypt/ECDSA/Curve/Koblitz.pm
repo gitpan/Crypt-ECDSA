@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.041';
+our $VERSION = '0.045';
 
 use base Crypt::ECDSA::Curve;
 
@@ -17,6 +17,11 @@ use Crypt::ECDSA::Util qw( bint two_pow );
 our $MULTIPLY_DEBUG = 0;
 
 our $named_curve = $Crypt::ECDSA::Curve::named_curve;
+
+sub equation {
+    'y * y + x * y = x * x * x + a * x * x + 1, finite field math, '
+      . 'with a = 0 or 1 and polynomial reduction';
+}
 
 sub multiply_koblitz {
     my ( $self, $x, $y ) = @_;
@@ -44,7 +49,7 @@ sub is_on_curve {
     my ( $self, $x, $y ) = @_;
     my $lhs = $self->multiply_koblitz( $y, $y );
     $lhs ^= $self->multiply_koblitz( $y, $x );
-    my $xsq = $self->multiply_koblitz( $x, $x );
+    my $xsq = $self->multiply_koblitz( $x,   $x );
     my $rhs = $self->multiply_koblitz( $xsq, $x );
     $rhs ^= $xsq if $self->{a};
     $rhs ^= 1;
@@ -62,8 +67,8 @@ sub add_on_curve {
     $y2 = bint($x2) unless ref $x2;
     $y2 = bint($y2) unless ref $y2;
 
-    my $s = $self->multiply_koblitz( $y1 ^ $y2 , 
-      $self->invert_koblitz( $x1 ^ $x2 ) );
+    my $s =
+      $self->multiply_koblitz( $y1 ^ $y2, $self->invert_koblitz( $x1 ^ $x2 ) );
 
     my $x_sum = $self->multiply_koblitz( $s, $s );
     $x_sum ^= $self->{a} if $self->{a};
@@ -89,7 +94,7 @@ sub double_on_curve {
     my ( $self, $x, $y, $order ) = @_;
     return $self->infinity if $x == 0;
     my $mod = bint( $self->{irreducible} );
-    
+
     my $s = $self->multiply_koblitz( $y, $self->invert_koblitz($x) );
     $s ^= $x;
 
@@ -154,14 +159,94 @@ sub is_weak_curve {
     return 0;
 }
 
-
-#############  non-method helper functions  ##########
-
-sub equation {
-    'y * y + x * y = x * x * x + a * x * x + 1, finite field math, '
-      . 'with a = 0 or 1 and polynomial reduction';
+sub to_octet {
+    my ( $self, $x, $y, $compress ) = @_;
+    my $octet;
+    my $x_octet = pack "C", split( '', Rmpz_get_str( $x, 16 ) );
+    if ($compress) {
+        my $first_byte;
+        if ( $x == 0 ) {
+            $first_byte = "\x02";
+        }
+        else {
+            my $z = $y * $self->invert_koblitz($x);
+            $first_byte = ( $z & 1 ) ? "\x03" : "\x02";
+        }
+        return $first_byte . $x_octet;
+    }
+    else {
+        my $y_octet = pack "C", split( '', Rmpz_get_str( $y, 16 ) );
+        return "\x04" . $x_octet . $y_octet;
+    }
 }
 
+sub from_octet {
+    my ( $self, $octet ) = @_;
+    my $q_bytes       = ceil( length( Rmpz_get_str( $self->{q}, 2 ) ) / 8 );
+    my $oct_len       = length $octet;
+    my $mod           = bint( $self->{irreducible} );
+    my $invalid_point = 1;
+    my ( $x, $y );
+    if ( $oct_len == $q_bytes + 1 ) {    # compressed point
+        my $y_byte = substr( $octet, 0, 1 );
+        my $y_test;
+        $y_test = 0 if $y_byte eq "\x02";
+        $y_test = 1 if $y_byte eq "\x03";
+        my $x =
+          Rmpz_init_set_str( ( pack "X*", unpack "C*", substr( $octet, 1 ) ),
+            16 );
+        if ( $x >= 0 and $x < $mod and defined $y_test ) {
+            if ( $x == 0 ) {
+                $y             = bint( $self->{b} )**( 2 * $self->{N} + 1 );
+                $invalid_point = 0;
+            }
+            else {
+                my $alpha = Rmpz_init();
+                $alpha =
+                  $x + $self->{a} + $self->multiply_koblitz( $self->{b},
+                    $self->invert_koblitz( $x * $x ) );
+                if ( $self->{N} & 1 ) {    # N is odd otherwise we have an error
+                    my $htr   = bint($alpha);
+                    my $count = ( $self->{N} - 1 ) / 2;
+                    for ( my $i = 1 ; $i <= $count ; ++$i ) {
+                        $htr = $self->multiply_koblitz( $htr, $htr ) ^ $alpha;
+                    }
+                    if ( ( $htr & 1 ) == $y_test ) {
+                        $y = $self->multiply_koblitz( $x, $htr );
+                    }
+                    else {
+                        $y = $self->multiply_koblitz( $x, ( $htr ^ 1 ) );
+                    }
+                }
+                $invalid_point = 0
+                  if defined($y)
+                  and $y >= 0
+                  and $y < $self->{p};
+            }
+        }
+    }
+    elsif ( $oct_len == 2 * $q_bytes + 1 ) {    # non-compressed point
+        my $m_byte = substr $octet, 0, 1;
+        if ( $m_byte eq "\x04" ) {
+            my $x_bytes = substr $octet, 1, $q_bytes;
+            my $y_bytes = substr $octet, 1 + $q_bytes, $q_bytes;
+            $x = Rmpz_init_set_str( ( pack "X*", unpack "C*", $x_bytes ), 16 );
+            $y = Rmpz_init_set_str( ( pack "X*", unpack "C*", $y_bytes ), 16 );
+            $invalid_point = 0
+              if $y >= 0
+              and $y < $mod
+              and $x >= 0
+              and $x < $mod
+              and $self->is_on_curve( $x, $y );
+        }
+    }
+    if ($invalid_point) {
+        $x = 0;
+        $y = 0;
+        carp("invalid octet source bytes for this point type");
+    }
+    return ( $x, $y );
+}
 
 =head1 NAME
 

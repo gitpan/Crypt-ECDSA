@@ -5,7 +5,7 @@ package Crypt::ECDSA::ECDSAVS;
 # customized for the current crypto FIPS verifier file formats, which are
 # a variant of the Windows style config file format.
 
-our $VERSION = '0.04';
+our $VERSION = '0.045';
 
 use strict;
 no warnings;

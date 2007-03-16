@@ -2,7 +2,7 @@ use Test::More tests => 45;
 
 use strict;
 no warnings;
-require 5.006;
+require 5.008;
 
 use Math::GMPz qw( :mpz );
 use Crypt::ECDSA::Util qw( bint bigint_from_coeff );

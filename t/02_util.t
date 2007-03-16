@@ -1,7 +1,7 @@
 use Test::More tests => 15;
 
 use strict;
-require 5.006;
+require 5.008;
 
 use Math::GMPz qw( :mpz );
 

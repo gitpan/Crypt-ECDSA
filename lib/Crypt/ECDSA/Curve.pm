@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.042';
+our $VERSION = '0.045';
 
 use strict;
 use warnings;
@@ -10,6 +10,7 @@ use Crypt::ECDSA::Point;
 use Crypt::ECDSA::Util qw( bint bigint_from_coeff two_pow );
 
 our $named_curve;
+our $ANS1_lookup;
 
 ###### constructors ##############
 
@@ -42,6 +43,7 @@ sub _make_named {
     my $standard     = $params{standard};
     my $curve_params = $named_curve->{$standard}
       or croak("Cannot get curve parameters for curve $standard");
+    $self->{standard} = $standard;
     $self->{p} = bint( $curve_params->{p} );
     $self->{a} = bint( $curve_params->{a} );
     $self->{b} = bint( $curve_params->{b} );
@@ -147,6 +149,8 @@ sub curve_order {
     return $self->{curve_order};
 }
 
+sub standard { shift->{standard} }
+
 
 sub infinity {
     my ($self) = @_;
@@ -157,6 +161,7 @@ sub infinity {
         is_infinity => 1,
     );
 }
+
 
 ###   predefined curves ###
 
@@ -365,6 +370,20 @@ $named_curve = {
     },
 };
 
+$ANS1_lookup = {
+    'secp192r1' => 'ECP-192',
+    'sect224r1' => 'ECP-224',
+    'secp256r1' => 'ECP-256',
+    'sect384r1' => 'ECP-384',
+    'secp521r1' => 'ECP-521',
+    'sect163k1' => 'EC2N-163',
+    'sect233k1' => 'EC2N-233',
+    'sect283k1' => 'EC2N-283',
+    'sect409k1' => 'EC2N-409',
+    'sect571k1' => 'EC2N-571',
+};
+
+
 =head1 NAME
 
 Crypt::ECDSA::Curve -- Base class for ECC curves
@@ -435,29 +454,48 @@ Crypt::ECDSA::Curve -- Base class for ECC curves
 
 =item B<a>
 
-  Returns parameter a in the elliptic equation
+  my $param = $curve->a;
+
+  Returns parameter a in the elliptic equation.
   
 =item B<b>
 
-  Returns parameter b in the elliptic equation
+  my $param = $curve->b;
+
+  Returns parameter b in the elliptic equation.
 
 =item B<p>
+
+  my $param = $curve->p;
 
   returns parameter p in the equation-- this is the field modulus parameter for prime curves
   
   
-  
+ 
 =item B<order>
 
-  Returns the curve base point G order if known
+  my $param = $curve->order;
+
+  Returns the curve base point G order if known.
   
 =item B<curve_order>
 
-  Returns the curve order if known
+  my $param = $curve->curve_order;
+
+  Returns the curve order if known. This might calculate the order some day.
+  It does not in this version.
 
 =item B<infinity>
 
-  Returns a valid point at infinity for the curve
+  my $inf = $curve->infinity;
+
+  Returns a valid point at infinity for the curve.
+
+=item B<standard>
+
+  my $param = $curve->standard;
+
+  Returns the 'standard' type of the curve, if defined for the instance.
 
 =back
 

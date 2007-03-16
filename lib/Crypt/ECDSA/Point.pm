@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Point;
 
-our $VERSION = '0.041';
+our $VERSION = '0.045';
 
 use strict;
 use warnings;
@@ -13,10 +13,16 @@ our $WARN_IF_NEW_POINT_INVALID = 0;
 sub new {
     my ( $class, %args ) = @_;
     my $self = {};
-    $self->{X}     = bint( $args{X} );
-    $self->{Y}     = bint( $args{Y} );
+    bless $self, $class;
     $self->{curve} = $args{curve}
       or croak "Must have curve for a point on curve";
+    if( $args{octet} ) {
+        $self->from_octet( $args{octet} );
+    }
+    else {
+        $self->{X}     = bint( $args{X} );
+        $self->{Y}     = bint( $args{Y} );
+    }
     $self->{order} =
       $args{order} ? bint( $args{order} ) : $self->{curve}->{order};
     $self->{is_infinity} = ( $args{is_infinity} ? 1 : 0 );
@@ -119,6 +125,31 @@ sub is_equal_to {
 sub is_on_curve {
     my $p = shift;
     return $p->curve->is_on_curve( $p->X, $p->Y );
+}
+
+sub to_octet {
+    my( $self, $compressed ) = @_;
+    return "\x00" if $self->{is_infinity};
+    return $self->curve->to_octet( $self->X, $self->Y, $compressed );
+}
+
+sub from_octet {
+    my( $self, $octet ) = @_;
+    if($octet eq "\x00") {
+        $self->{X} = 0;
+        $self->{Y} = 0;
+        $self->{is_infinity} = 1;
+        return $self;
+    }
+    my( $x, $y ) = $self->{curve}->from_octet( $octet ); 
+    unless( $x and $y ) {
+        carp("Bad octet for point");
+        return;
+    }      
+    $self->{X} = $x;
+    $self->{Y} = $y;
+    $self->{order} = $self->{curve}->{order} unless $self->{order};
+    return $self;
 }
 
 use overload

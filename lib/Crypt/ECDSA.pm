@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.042';
+our $VERSION = '0.045';
 
 use strict;
 use warnings;
@@ -167,7 +167,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
       standard => 'ECP-256',
       algorithm => Digest::SHA->new(256);
     );
-    my $msg = "This is a test message fpr perl ecdsa."    
+    my $msg = "This is a test message for perl ecdsa."    
     my ( $r, $s ) = ecdsa->signature( message => $msg );
 
     print "Signature (r, s) is: \nr = $r\ns = $s\n";
@@ -182,6 +182,9 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
     my ( $r, $s ) = ecdsa->signature( message => $msg );
     
     my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, message => $msg );
+
+    my $ecdsa_from_PEM = Crypt::ECDSA->new( PEM => $pem_filename );
+
 
 =head1 METHODS
 
