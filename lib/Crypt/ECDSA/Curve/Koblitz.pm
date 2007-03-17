@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.045';
+our $VERSION = '0.046';
 
 use base Crypt::ECDSA::Curve;
 
@@ -264,12 +264,6 @@ Crypt::ECDSA::Curve::Koblitz -- binary (F(2**N)) curves for EC cryptography
 
   Delegated to base class Crypt::ECDSA::Curve
 
-
-=item B<reduce_F2m>
-
-  Special binary field function--reduce the result of addition or multiplication on
-  the curve by the 'irreducible' basis polynomial.  Akin to modular addition, but slower :(.
-
 =item B<multiply_F2m>
 
   Binary field multiplication
@@ -313,9 +307,13 @@ Crypt::ECDSA::Curve::Koblitz -- binary (F(2**N)) curves for EC cryptography
   tests for known weak curve parameters
 
 
-=item B<tau_point_multiply>
+=item B<from_octet>
 
-  Koblitz curve binary field point multiply algorithm from draft FIPS 186-3, pages 111-114  
+  Constructs a Point from an ASN.1 octet (compressed or uncompressed formats)  
+
+=item B<to_octet>
+  
+  Converts the Point into an ASN.1 octet format
 
 =back
 

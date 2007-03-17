@@ -16,6 +16,10 @@ use Digest::MD5 qw( md5 );
 
 use Crypt::ECDSA::Util qw( bint random_bits );
 
+require Exporter;
+our @ISA    = qw(Exporter);
+our @EXPORT = qw( read_ECDSA_signature_file write_ECDSA_signature_file );
+
 our $parameters_label      = "EC PARAMETERS";
 our $private_pem_label     = "EC PRIVATE KEY";
 our $public_pem_label      = "EC PUBLIC KEY";
@@ -25,7 +29,7 @@ our $ecdsa_signature_label = "ECDSA SIGNATURE";
 # and
 # http://tools.ietf.org/html/draft-ietf-pkix-sha2-dsa-ecdsa-00.txt
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
     my ( $class, %args ) = @_;
@@ -275,11 +279,57 @@ sub key_to_public_PEM {
     return $PEM;
 }
 
+
 #######  utility helper functions  ###########
+
+sub read_ECDSA_signature_file {
+    my( $filename ) = @_;
+    open( my $fh, '<', $filename) 
+      or croak( "Cannot read signature file $filename: $!" );
+    binmode $fh;
+    read( $fh, my $content, -s $fh);
+    close $fh;
+    my $coding = Encoding::BER::DER->new();
+    my $tree = $coding->decode($content);
+    my $r = DER_octet_string_to_bint( $tree->{value}->[0]->{value} );
+    my $s = DER_octet_string_to_bint( $tree->{value}->[0]->{value} );
+warn "r is $r and s is $s";
+    return ( $r, $s );
+}
+ 
+sub write_ECDSA_signature_file {
+    my( $filename, $r, $s ) = @_;
+    open( my $outfh, '>', $filename) 
+      or croak( "Cannot open file $filename for writing: $!" );
+    binmode $outfh;
+    my $coding = Encoding::BER::DER->new();
+    my $tree = {
+        'type'  => [ 'universal', 'constructed', 'sequence' ],
+        'value' => [
+            {
+                'value' => bint_to_DER_octet_string($r),
+                'type'  => [ 'universal', 'primitive', 'integer', ],
+            },
+            {
+                'value' => bint_to_DER_octet_string($s),
+                'type'  => [ 'universal', 'primitive', 'integer', ],
+            },
+        ],
+    };
+    my $retval = print $outfh $coding->encode($tree);
+    close $outfh;
+    return $retval;
+}
 
 sub DER_octet_string_to_bint {
     my ($str) = @_;
     return Rmpz_init_set_str( unpack( 'H*', $str ), 16 );
+}
+
+sub bint_to_DER_octet_string {
+    my ($n) = @_;
+    $n = bint($n) unless ref $n;
+    return uc Rmpz_get_str( $n, 16 );
 }
 
 sub DER_public_key_to_point {
@@ -338,7 +388,7 @@ our $PEM_cipher_type = {
     'DES-CBC'      => 'DES',
     'DES-EDE3-CBC' => 'DES_EDE3',
     'AES-128-CBC'  => 'Rijndael',
-    'BF-CBC'       => 'Crypt::Blowfish',
+    'BF-CBC'       => 'Blowfish',
 };
 
 our $cipher_to_DEK = {
@@ -358,7 +408,7 @@ our $cipher_iv_bitsize = {
 our $cipher_key_bytesize = {
     "DES_EDE3"        => 24,
     Rijndael          => 16,
-    Blowfish          => 56,
+    Blowfish          => 16,
     DES               => 8,
 };
 
@@ -376,23 +426,14 @@ sub encrypt_pem {
     my $keystring = evp_key( $password, $iv, $cipher_key_bytesize->{$cipher} );
     my $work = join '', @{$pem_lines};
     $work = decode_base64( $work );
-    my $extra_bytes = 16 - ( ( length $work ) % 16 ) - 1;
-    $extra_bytes = 16 unless $extra_bytes;
-    $work .= ' ' x $extra_bytes;
-    $work .= pack 'h', $extra_bytes + 1;
-    my $alg;
-    if($cipher eq "Rijndael") {
-        $alg = Crypt::Rijndael->new( $keystring, Crypt::Rijndael::MODE_CBC );
-        $alg->set_iv( $iv );       
-    }
-    else  {
-        $alg = Crypt::CBC->new(
-            -key => $password,
-            -cipher => $cipher,
-            -iv => $iv,
-            -header => 'none',
-        );
-    }
+    my $alg = Crypt::CBC->new(
+        -literal_key => 1,
+        -key => $keystring,
+        -cipher => $cipher,
+        -iv => $iv,
+        -header => 'none',
+        -keysize => $cipher_key_bytesize->{$cipher},
+    );
     $work = $alg->encrypt($work);    
     my $b64str = encode_base64($work);
     $b64str =~ s/\s//g;
@@ -409,7 +450,7 @@ sub encrypt_pem {
 
 sub decrypt_pem {
     my( $pem_lines, $password ) = @_;
-    my( $begin, $end, $cipher, $iv, $keystring, $alg );
+    my( $begin, $end, $cipher, $iv, $keystring );
     my $work = '';
     my $found_encryption;
     for my $line (@$pem_lines) {
@@ -438,25 +479,15 @@ sub decrypt_pem {
     croak "Missing data: password($password), iv($iv)" unless $password and $iv;
     $work =~ s/\s//g;
     $work = decode_base64($work);
-    if($cipher eq "Rijndael") {
-        $alg = Crypt::Rijndael->new( $keystring, Crypt::Rijndael::MODE_CBC );
-        $alg->set_iv($iv);
-    }
-    else  {
-warn " keystring $keystring, iv $iv\n";
-        $alg = Crypt::CBC->new(
-            -literal_key => 1,
-            -key => $keystring,
-            -cipher => $cipher,
-            -iv => substr( $iv, 0, 8),
-            -header => 'none',
-        );
-    }
-    
+    my $alg = Crypt::CBC->new(
+        -keysize => $cipher_key_bytesize->{$cipher},
+        -literal_key => 1,
+        -key => $keystring,
+        -cipher => $cipher,
+        -iv => $iv,
+        -header => 'none',
+    );
     $work = $alg->decrypt($work);
-    # the last byte should tell how much padding to remove from the end
-    my $padding_len = ord substr $work, -1;
-    $work = substr $work, 0, -$padding_len;
     $work = encode_base64($work);
     return ( $begin, $work, $end );
 }
@@ -510,11 +541,14 @@ These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
     
 =item B<write_PEM>
 
-  $pem->write_PEM( filename => $outfile, private => 1, password => $pwrd );
+  $pem->write_PEM( filename => $outfile, private => 1, 
+    Password => $pwrd, cipher => 'Rijndael' );
   
   Write a PEM file.  The private parameter indicates to write out the 
   private key.  Otherwise the public key only is wriiten to the file.
-  The password is for encryption if desired.
+  The Password is for encryption if desired. cipher => $cipher is for the
+  cipher method: 'Rijndael' (AES) is suggested, but if your installation has them,
+  the module can use DES_EDE3 and Blowfish as well.
   
   
 =item B<key_to_private_pem>
@@ -527,11 +561,6 @@ These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
 
 
 =back
-
-=head1 TODO
-
-  Password protection with encrypted private key PEM files requires that the Rijndael
-  module be used, so far.   Other cipher support to be added.
 
 
 =head1 AUTHOR 

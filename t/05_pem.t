@@ -1,4 +1,4 @@
-use Test::More tests => 23;
+use Test::More tests => 31;
 
 use strict;
 require 5.008;
@@ -9,8 +9,6 @@ use_ok( 'Crypt::ECDSA' );
 use_ok( 'Crypt::ECDSA::Point' );
 use_ok( 'Crypt::ECDSA::Key' );
 use_ok( 'Crypt::ECDSA::PEM' );
-
-# use Data::Dumper::Simple;
 
 my $ecdsa = Crypt::ECDSA->new( standard => 'ECP-256', PEM => 't/test1ecdsa.pem' );
 isa_ok( $ecdsa, 'Crypt::ECDSA' );
@@ -34,7 +32,7 @@ my $orig_x = $key->Qx;
 my $orig_y = $key->Qy;
 my $orig_secret = $key->secret;
 my $written = $pem1test->write_PEM( 
-    filename => 't\test1out.pem',
+    filename => 't/test1out.pem',
     key => $key,
     private => 1,
 );
@@ -66,7 +64,19 @@ ok($orig_x == $ecdsa_rw->key->Qx, "crypted x with aes128");
 ok($orig_y == $ecdsa_rw->key->Qy, "crypted y with aes128");
 ok($orig_secret == $ecdsa_rw->key->secret, "crypted d with aes128");
 
+my $ecdsa_des3 = Crypt::ECDSA->new( standard => 'ECP-256', 
+  PEM => 't/test1des3.pem', Password => 'des3' );
+isa_ok( $ecdsa_des3, 'Crypt::ECDSA' );
+ok($orig_x == $ecdsa_des3->key->Qx, "crypted x with des3");
+ok($orig_y == $ecdsa_des3->key->Qy, "crypted y with des3");
+ok($orig_secret == $ecdsa_des3->key->secret, "crypted d with des3");
 
+my $ecdsa_bf = Crypt::ECDSA->new( standard => 'ECP-256', 
+  PEM => 't/test1bf.pem', Password => 'bf-cbc' );
+isa_ok( $ecdsa_bf, 'Crypt::ECDSA' );
+ok($orig_x == $ecdsa_bf->key->Qx, "crypted x with des3");
+ok($orig_y == $ecdsa_bf->key->Qy, "crypted y with des3");
+ok($orig_secret == $ecdsa_bf->key->secret, "crypted d with des3");
 
 
 

@@ -22,7 +22,11 @@ Revision history for Perl module Crypt::ECDSA
     - code cleanup --  unused modules
     - adjusted Makefile.PL to require 5.8
     
-
+0.046 Fri Mar 16 2007
+    - added tests of PEM encryption
+    
+0.047 Sat Mar 17 2007
+    - some test files not included in last distribution, added back in
 
 
 

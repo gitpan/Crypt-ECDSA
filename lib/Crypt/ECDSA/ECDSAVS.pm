@@ -5,7 +5,7 @@ package Crypt::ECDSA::ECDSAVS;
 # customized for the current crypto FIPS verifier file formats, which are
 # a variant of the Windows style config file format.
 
-our $VERSION = '0.045';
+our $VERSION = '0.046';
 
 use strict;
 no warnings;
@@ -273,7 +273,7 @@ sub do_all_tasks {
 
 ######  non-member utility functions  ########
 
-# GUESS as to number format, return BigInt based on GUESS as to base
+# GUESS as to number format, return GMPz bigint based on GUESS as to base
 # works for big ECDSAVS numbers, but likely breaks with smaller values
 sub string_to_bigint {
     my $s = shift;

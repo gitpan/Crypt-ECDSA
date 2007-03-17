@@ -216,14 +216,16 @@ These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module
 =item B<bint>
 
   bint( $scalar );
-  A shortcut for Math::BigInt->new( ).
-  Makes a new Math::BigInt from a scalar argument,
+  Mostly a shortcut for Math::GMPz->new( ).
+  
+  Makes a new Math::GMPz type bigint arbitrary sized integer 
+  from a scalar argument or another bigint.
 
 =item B<two_pow>
 
   my $two_to_the_power_of_n = two_pow( $n );
 
-  Returns a new Math::BigInt equal to 2 ** $n.
+  Returns a new bigint equal to 2 ** $n.
   
 =item B<bigint_from_coeff>
 

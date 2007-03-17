@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.045';
+our $VERSION = '0.047';
 
 use strict;
 use warnings;
@@ -177,7 +177,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
     my $ecdsa = Crypt::ECDSA->new( standard => 'ECP-256' );
     
-    my $msg = "This is a test message fpr perl ecdsa."
+    my $msg = "This is a test message for perl ecdsa."
     
     my ( $r, $s ) = ecdsa->signature( message => $msg );
     
@@ -204,7 +204,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
     
   .. and other arguments, used as per Crypt::ECDSA::Key.
   
-);
+
   
   
   
@@ -278,14 +278,14 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
   Initially, the curve parameters (q,FR,a,b,G,n,h) must be agreed upon. 
   Also, Alice must have a key pair suitable for elliptic curve cryptography, 
   consisting of a private key dA (a randomly selected integer in the 
-  interval [1,n ? 1]) and a public key QA (where QA = dAG).
+  interval [1,n - 1]) and a public key QA (where QA = dAG).
 
   For Alice to sign a message m, she follows these steps:
 
    1. Calculate e = HASH(m), where HASH is a cryptographic hash function, such as SHA-1.
-   2. Select a random integer k from [1,n ? 1].
+   2. Select a random integer k from [1,n - 1].
    3. Calculate r = x1(mod n), where (x1,y1) = kG. If r = 0, go back to step 2.
-   4. Calculate s = k ? 1(e + dAr)(mod n). If s = 0, go back to step 2.
+   4. Calculate s = k**(-1)*(e + dAr)(mod n). If s = 0, go back to step 2.
    5. The signature is the pair (r,s).
 
   Signature verification algorithm
@@ -293,20 +293,17 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
   For Bob to authenticate Alice's signature, he must have a copy of her 
   public key QA. He follows these steps:
 
-   1. Verify that r and s are integers in [1,n ? 1]. If not, the signature is invalid.
+   1. Verify that r and s are integers in [1,n - 1]. If not, the signature is invalid.
    2. Calculate e = HASH(m), where HASH is the same function used in the signature generation.
-   3. Calculate w = s ? 1(mod n).
+   3. Calculate w = s**(-1)(mod n).
    4. Calculate u1 = ew(mod n) and u2 = rw(mod n).
    5. Calculate (x1,y1) = u1G + u2QA.
    6. The signature is valid if x1 = r(mod n), invalid otherwise.
 
 =head1  TODO
-
-    Currently I know of no working non-Cygwin Windows versions of the library needed by 
-    Math::GMPz.  The GMP library is available for most other systems. I may try to 
-    create a PPD file for PPM.
-    
+   
     The Koblitz curve point multiplication algorithm could be optimized a bit more.
+    Digital X.509 certificate handling might be implemented for OpenSSL compatibility.
 
 =head1 AUTHOR
 

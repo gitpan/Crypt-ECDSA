@@ -30,6 +30,8 @@ t/SigVer.rsp.correct
 t/test1ecdsa.pem
 t/test2pem.pem
 t/test1aes128ec.pem
+t/test1des3.pem
+t/test1bf.pem
 Makefile.PL
 
 META.yml                                 Module meta-data (added by MakeMaker)

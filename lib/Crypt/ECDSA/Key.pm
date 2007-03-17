@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = '0.045';
+our $VERSION = '0.046';
 
 use strict;
 no warnings;
@@ -15,11 +15,6 @@ use Crypt::ECDSA::Util qw( bint random_bits );
 our $standard_curve = $Crypt::ECDSA::Curve::named_curve;
 
 use warnings;
-
-our $ecdsa_asn;
-our $parameters_label  = "EC PARAMETERS";
-our $private_pem_label = "EC PRIVATE KEY";
-our $public_pem_label  = "EC PUBLIC KEY";
 
 sub new {
     my ( $class, %args ) = @_;
@@ -254,7 +249,7 @@ These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
 
 =item B<secret> 
 
-  returns the secret scalar private key (stored internally as scalar bigint $d)
+  returns the secret scalar private key (stored internally as scalar $d)
 
 =item B<set_public_Q>
 

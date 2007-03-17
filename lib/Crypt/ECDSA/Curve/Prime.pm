@@ -266,6 +266,15 @@ Crypt::ECDSA::Curve::Prime -- Elliptic curves ove F(q), with q prime, for EC cry
     
   tests for known weak curve parameters
 
+
+=item B<from_octet>
+
+  Constructs a Point from an ASN.1 DER coded octet (compressed or uncompressed formats)  
+
+=item B<to_octet>
+  
+  Converts the Point into an ASN.1 DER encoded octet format
+
 =back
 
 =item FUNCTIONS
