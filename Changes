@@ -31,4 +31,6 @@ Revision history for Perl module Crypt::ECDSA
 0.05  Sun Mar 17 2007
     - fixed bug in modular inverse during siggen
 
+0.051 Sum Mar 17 2007
+    - testing requires several modules to be installed, added to Makefile.PL
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.05';
+our $VERSION = '0.051';
 
 use strict;
 use warnings;
@@ -230,10 +230,6 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
   .. and other arguments, used as per Crypt::ECDSA::Key.
 
-
-
-
-
 =item B<key>
 
   my $key = $ecdsa->key;
@@ -265,9 +261,16 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 =item B<signature>
 
 
-    my ( $r, $s ) = ecdsa->signature( message => $msg );
+    my ( $r, $s ) = $ecdsa->signature( message => $msg );
+    
+    my( $r, $s ) = $ecdsa->signature( hash => $digest );
+    
+    $ecdsa->signature( message_file => $filename, sig_file => $outfilename );
 
   Sign a message as message => message or a digest as hash => $digest
+  
+  Optionally, the message_file is a file to be hashed and signed, and the 
+  sig_file is a file to which a DER encoded (r,s) signature pair is written.
 
 =item B<sign>
 
@@ -279,14 +282,22 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
 =item B<verify>
 
-  Verify as message given  r, s, and either message or its digest
-
-
     my $msg = "This is a test message fpr perl ecdsa."
     my $digest = ecdsa->make_text_digest( $msg );
     my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, message => $msg );
     my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, hash => $digest );
 
+    $ok = $ecdsa->verify( message => $msg, r => $r, 's' => $s );   
+    $ok = $ecdsa->verify( r => $r, s => $s, hash => $digest );
+    $ecdsa->verify( message_file => $filename, sig_file => $outfilename );
+
+  Verify a message as message => message or a digest as hash => $digest
+  
+  Optionally, the message_file is a file to be hashed and verified against the 
+  sig_file, which is a file to which a DER encoded (r,s) signature pair has
+  been written.
+
+  Verify as message given  r, s, and either message or its digest
 
 =back
 
