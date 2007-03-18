@@ -90,12 +90,12 @@ sub new {
         curve => $self->{curve},
         order => $order
     );
-
     # if given a Q public point, set this, otherwise need to create this
     $self->{d} = bint( $args{d} ) if defined $args{d};
     $self->new_secret_value() unless defined $self->{d} and $self->{d} > 0;
     $self->{Q} = $args{Q} if defined $args{Q};
     $self->{Q} = $self->{G} * $self->{d} unless defined $self->{Q};
+    $self->{Q}->{curve} = $self->{G}->{curve};
     return $self;
 }
 

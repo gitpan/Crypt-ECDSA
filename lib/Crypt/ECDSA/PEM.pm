@@ -1,6 +1,6 @@
 package Crypt::ECDSA::PEM;
 
-our $VERSION = '0.045';
+our $VERSION = '0.05';
 
 use strict;
 use warnings;
@@ -63,7 +63,8 @@ sub read_PEM_fh {
     my $buf = '';
     my %names;
     my $working_key;
-    foreach my $line ( @pem_lines ) {
+    foreach my $line (@pem_lines) {
+
         if ( $line =~ /^--.+--$/ ) {
             if ( $line =~ /^[\s\-]+BEGIN\s+([\w\s\d]+)[\s\-]+/ ) {
                 $working_key = $1;
@@ -149,13 +150,13 @@ sub write_PEM {
     my $key      = $args{key};
     my $filename = $args{filename};
     my $password = $args{Password};
-    my $cipher = $args{cipher};
+    my $cipher   = $args{cipher};
     my $txt;
     if ( $args{private} ) {
         $txt = $self->key_to_private_pem( $key, $password, $cipher );
     }
     else {
-        $txt = $self->key_to_public_pem ( $key );
+        $txt = $self->key_to_public_pem($key);
     }
     open my $outfh, '>', $filename or croak "Cannot write to $filename: $!";
     binmode $outfh;
@@ -210,19 +211,20 @@ sub key_to_private_pem {
     my $b64str = encode_base64( $coding->encode($tree) );
     $b64str =~ s/\s//g;
     $Text::Wrap::columns = 65;
-    my $txt    = Text::Wrap::wrap( '', '', $b64str );
+    my $txt = Text::Wrap::wrap( '', '', $b64str );
     my $PEM;
-    if($password) {
-        my @lines = map {"$_\n"} split /\n/, $txt;
+
+    if ($password) {
+        my @lines = map { "$_\n" } split /\n/, $txt;
         $PEM = encrypt_pem( \@lines, $cipher, $password );
     }
     else {
         my $dashes = '-----';
         my $begin  = 'BEGIN ';
         my $end    = 'END ';
-        $PEM    =
+        $PEM =
             "$dashes$begin$private_pem_label$dashes\n" . $txt
-        . "\n$dashes$end$private_pem_label$dashes";
+          . "\n$dashes$end$private_pem_label$dashes";
     }
     $self->{private_pem_tree}->{output_PEM} = $PEM;
     return $PEM;
@@ -267,7 +269,7 @@ sub key_to_public_PEM {
     };
     my $b64str = encode_base64( $coding->encode($tree) );
     $b64str =~ s/\s//g;
-    $Text::Wrap::columns = 65;  # copy openssl's line length here
+    $Text::Wrap::columns = 65;    # copy openssl's line length here
     my $txt    = Text::Wrap::wrap( '', '', $b64str );
     my $dashes = '-----';
     my $begin  = 'BEGIN ';
@@ -279,40 +281,46 @@ sub key_to_public_PEM {
     return $PEM;
 }
 
-
 #######  utility helper functions  ###########
 
 sub read_ECDSA_signature_file {
-    my( $filename ) = @_;
-    open( my $fh, '<', $filename) 
-      or croak( "Cannot read signature file $filename: $!" );
+    my ($filename) = @_;
+    open( my $fh, '<', $filename )
+      or croak("Cannot read signature file $filename: $!");
     binmode $fh;
-    read( $fh, my $content, -s $fh);
+    read( $fh, my $content, -s $fh );
     close $fh;
+    require Math::BigInt;
     my $coding = Encoding::BER::DER->new();
-    my $tree = $coding->decode($content);
-    my $r = DER_octet_string_to_bint( $tree->{value}->[0]->{value} );
-    my $s = DER_octet_string_to_bint( $tree->{value}->[0]->{value} );
-warn "r is $r and s is $s";
-    return ( $r, $s );
+    my $tree   = $coding->decode($content);
+    my $r      =
+      Rmpz_init_set_str( substr( $tree->{value}->[0]->{value}->as_hex, 2 ),
+        16 );
+    my $s =
+      Rmpz_init_set_str( substr( $tree->{value}->[1]->{value}->as_hex, 2 ),
+        16 );
+    warn "r is $r and s is $s" if $DEBUG;
+    return ( bint($r), bint($s) );
 }
- 
+
 sub write_ECDSA_signature_file {
-    my( $filename, $r, $s ) = @_;
-    open( my $outfh, '>', $filename) 
-      or croak( "Cannot open file $filename for writing: $!" );
+    my ( $filename, $r, $s ) = @_;
+    open( my $outfh, '>', $filename )
+      or croak("Cannot open file $filename for writing: $!");
     binmode $outfh;
+    require Math::BigInt;
     my $coding = Encoding::BER::DER->new();
+    warn "r is $r and s is $s" if $DEBUG;
     my $tree = {
         'type'  => [ 'universal', 'constructed', 'sequence' ],
         'value' => [
             {
-                'value' => bint_to_DER_octet_string($r),
-                'type'  => [ 'universal', 'primitive', 'integer', ],
+                'value' => '0x' . Rmpz_get_str( $r, 16 ),
+                'type' => [ 'universal', 'primitive', 'integer', ],
             },
             {
-                'value' => bint_to_DER_octet_string($s),
-                'type'  => [ 'universal', 'primitive', 'integer', ],
+                'value' => '0x' . Rmpz_get_str( $s, 16 ),
+                'type' => [ 'universal', 'primitive', 'integer', ],
             },
         ],
     };
@@ -392,24 +400,24 @@ our $PEM_cipher_type = {
 };
 
 our $cipher_to_DEK = {
-    Blowfish          => 'BF-CBC',
-    "DES_EDE3"        => 'DES-EDE3-CBC', 
-    Rijndael          => 'AES-128-CBC',
-    DES               => 'DES-CBC',
+    Blowfish   => 'BF-CBC',
+    "DES_EDE3" => 'DES-EDE3-CBC',
+    Rijndael   => 'AES-128-CBC',
+    DES        => 'DES-CBC',
 };
 
 our $cipher_iv_bitsize = {
-    "DES_EDE3"        => 64,
-    Rijndael          => 128,
-    Blowfish          => 64,  # really none
-    DES               => 64,
+    "DES_EDE3" => 64,
+    Rijndael   => 128,
+    Blowfish   => 64,    # really none
+    DES        => 64,
 };
 
 our $cipher_key_bytesize = {
-    "DES_EDE3"        => 24,
-    Rijndael          => 16,
-    Blowfish          => 16,
-    DES               => 8,
+    "DES_EDE3" => 24,
+    Rijndael   => 16,
+    Blowfish   => 16,
+    DES        => 8,
 };
 
 sub encrypt_pem {
@@ -417,59 +425,58 @@ sub encrypt_pem {
     my $DEK_type = $cipher_to_DEK->{$cipher};
     croak "Need password and cipher type" unless $password and $DEK_type;
     my $bytes_needed = $cipher_iv_bitsize->{$cipher} / 8;
-    my $iv_str = '';
-    while( length($iv_str) != $bytes_needed * 2 ) {
-        $iv_str = uc 
-          Rmpz_get_str( random_bits( $cipher_iv_bitsize->{$cipher} ), 16 );
+    my $iv_str       = '';
+    while ( length($iv_str) != $bytes_needed * 2 ) {
+        $iv_str =
+          uc Rmpz_get_str( random_bits( $cipher_iv_bitsize->{$cipher} ), 16 );
     }
     my $iv = pack "H*", $iv_str;
     my $keystring = evp_key( $password, $iv, $cipher_key_bytesize->{$cipher} );
     my $work = join '', @{$pem_lines};
-    $work = decode_base64( $work );
+    $work = decode_base64($work);
     my $alg = Crypt::CBC->new(
         -literal_key => 1,
-        -key => $keystring,
-        -cipher => $cipher,
-        -iv => $iv,
-        -header => 'none',
-        -keysize => $cipher_key_bytesize->{$cipher},
+        -key         => $keystring,
+        -cipher      => $cipher,
+        -iv          => $iv,
+        -header      => 'none',
+        -keysize     => $cipher_key_bytesize->{$cipher},
     );
-    $work = $alg->encrypt($work);    
+    $work = $alg->encrypt($work);
     my $b64str = encode_base64($work);
     $b64str =~ s/\s//g;
     $Text::Wrap::columns = 65;
     my $txt    = Text::Wrap::wrap( '', '', $b64str );
-    my $begin = "-----BEGIN EC PRIVATE KEY-----";
+    my $begin  = "-----BEGIN EC PRIVATE KEY-----";
     my $second = "Proc-Type: 4,ENCRYPTED";
-    my $third = "DEK-Info: $cipher_to_DEK->{$cipher},$iv_str";
-    my $end   = "-----END EC PRIVATE KEY-----";
-    my $PEM    =
-        "$begin\n$second\n$third\n\n$txt\n$end\n";
+    my $third  = "DEK-Info: $cipher_to_DEK->{$cipher},$iv_str";
+    my $end    = "-----END EC PRIVATE KEY-----";
+    my $PEM    = "$begin\n$second\n$third\n\n$txt\n$end\n";
     return $PEM;
 }
 
 sub decrypt_pem {
-    my( $pem_lines, $password ) = @_;
-    my( $begin, $end, $cipher, $iv, $keystring );
+    my ( $pem_lines, $password ) = @_;
+    my ( $begin, $end, $cipher, $iv, $keystring );
     my $work = '';
     my $found_encryption;
     for my $line (@$pem_lines) {
-        if ($line =~ /^-----BEGIN/) { 
+        if ( $line =~ /^-----BEGIN/ ) {
             $begin = $line;
         }
-        elsif( $line =~ /^-----END/) {
+        elsif ( $line =~ /^-----END/ ) {
             $end = $line;
             last;
         }
-        elsif( $line =~ /^Proc-Type/i ) {
+        elsif ( $line =~ /^Proc-Type/i ) {
             next;
         }
-        elsif( $line =~ /^DEK-Info:\s*([^\,]+),([\dabcdef]+)/i ) {
+        elsif ( $line =~ /^DEK-Info:\s*([^\,]+),([\dabcdef]+)/i ) {
             $found_encryption = 1;
-            $cipher = $PEM_cipher_type->{$1};
+            $cipher           = $PEM_cipher_type->{$1};
             my $key_bytesize = $cipher_key_bytesize->{$cipher};
             $iv = pack "H*", $2;
-            $keystring = evp_key( $password, $iv, $key_bytesize);
+            $keystring = evp_key( $password, $iv, $key_bytesize );
         }
         else {
             $work .= $line;
@@ -480,12 +487,12 @@ sub decrypt_pem {
     $work =~ s/\s//g;
     $work = decode_base64($work);
     my $alg = Crypt::CBC->new(
-        -keysize => $cipher_key_bytesize->{$cipher},
+        -keysize     => $cipher_key_bytesize->{$cipher},
         -literal_key => 1,
-        -key => $keystring,
-        -cipher => $cipher,
-        -iv => $iv,
-        -header => 'none',
+        -key         => $keystring,
+        -cipher      => $cipher,
+        -iv          => $iv,
+        -header      => 'none',
     );
     $work = $alg->decrypt($work);
     $work = encode_base64($work);
@@ -493,11 +500,11 @@ sub decrypt_pem {
 }
 
 sub evp_key {
-    my($data, $salt, $key_byte_size) = @_;
+    my ( $data, $salt, $key_byte_size ) = @_;
     $salt = substr( $salt, 0, 8 );
-    my $key = md5($data, $salt);
-    while (length($key) < $key_byte_size ) {
-        $key .= md5($key, $data, $salt);
+    my $key = md5( $data, $salt );
+    while ( length($key) < $key_byte_size ) {
+        $key .= md5( $key, $data, $salt );
     }
     return substr $key, 0, $key_byte_size;
 }
@@ -582,7 +589,5 @@ it under the same terms as Perl itself.
 
 
 =cut
-
-
 
 1;

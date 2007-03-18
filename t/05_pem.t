@@ -1,4 +1,4 @@
-use Test::More tests => 31;
+use Test::More tests => 32;
 
 use strict;
 require 5.008;
@@ -74,10 +74,21 @@ ok($orig_secret == $ecdsa_des3->key->secret, "crypted d with des3");
 my $ecdsa_bf = Crypt::ECDSA->new( standard => 'ECP-256', 
   PEM => 't/test1bf.pem', Password => 'bf-cbc' );
 isa_ok( $ecdsa_bf, 'Crypt::ECDSA' );
-ok($orig_x == $ecdsa_bf->key->Qx, "crypted x with des3");
-ok($orig_y == $ecdsa_bf->key->Qy, "crypted y with des3");
-ok($orig_secret == $ecdsa_bf->key->secret, "crypted d with des3");
+ok($orig_x == $ecdsa_bf->key->Qx, "crypted x with Blowfishd");
+ok($orig_y == $ecdsa_bf->key->Qy, "crypted y with Blowfishd");
+ok($orig_secret == $ecdsa_bf->key->secret, "crypted d with Blowfish");
 
+
+$ecdsa->sign( 
+  message_file => 't/Gettysburg.jpg', 
+  sig_file => 't/Gettysburg.jpg.sha1',
+);
+
+ok( $ecdsa->verify( 
+  message_file => 't/Gettysburg.jpg', 
+  sig_file => 't/Gettysburg.jpg.sha1' 
+  ) == 1, "read and write sig file"
+);
 
 
 
