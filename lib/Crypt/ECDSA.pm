@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.051';
+our $VERSION = '0.052';
 
 use strict;
 use warnings;
@@ -90,7 +90,7 @@ sub signature {
            croak("Need a message or the hash of a message for the signature" ) )
     ;
     my $d = bint( $self->{key}->{d} );
-    my $max_tries = 12;
+    my $max_tries = 120;
     my($r, $s);
     while ( $max_tries-- ) {
         my $k = $self->_make_ephemeral_k($q);
@@ -98,7 +98,7 @@ sub signature {
         $r  = bint( $kG->X % $n ) ;
         next if $r == 0;
         my $kinv = Rmpz_init();
-        Rmpz_invert( $kinv, $k, $n );
+        Rmpz_invert( $kinv, $k, $n ) or next;
         $s = bint( ( $kinv * ( $e + ($d * $r) % $n ) ) % $n );
         next if $s == 0;
         if( $args{sig_file} ) {
@@ -289,7 +289,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
     $ok = $ecdsa->verify( message => $msg, r => $r, 's' => $s );   
     $ok = $ecdsa->verify( r => $r, s => $s, hash => $digest );
-    $ecdsa->verify( message_file => $filename, sig_file => $outfilename );
+    $ok = $ecdsa->verify( message_file => $filename, sig_file => $sigfilename );
 
   Verify a message as message => message or a digest as hash => $digest
   

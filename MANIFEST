@@ -19,6 +19,7 @@ t/02_util.t
 t/03_binary_field.t
 t/04_ecdsa.t
 t/05_pem.t
+t/Gettysburg.jpg
 t/KeyPair.req
 t/KeyPair.rsp.correct
 t/PKV.req

@@ -34,3 +34,5 @@ Revision history for Perl module Crypt::ECDSA
 0.051 Sum Mar 17 2007
     - testing requires several modules to be installed, added to Makefile.PL
 
+0.052 Fri 23 March 2007
+    - added missing test file
