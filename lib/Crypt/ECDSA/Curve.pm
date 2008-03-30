@@ -1,13 +1,13 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.045';
+our $VERSION = '0.060';
 
 use strict;
 use warnings;
 use Carp 'croak';
 
 use Crypt::ECDSA::Point;
-use Crypt::ECDSA::Util qw( bint bigint_from_coeff two_pow );
+use Crypt::ECDSA::Util qw( bint hex_bint bigint_from_coeff two_pow );
 
 our $named_curve;
 our $ANS1_lookup;
@@ -390,7 +390,7 @@ Crypt::ECDSA::Curve -- Base class for ECC curves
 
 =head1 DESCRIPTION
 
- These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
+  These are for use with Crypt::ECDSA and require Math::BigInt::GMP.
 
 =head1 METHODS
 

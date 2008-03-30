@@ -3,12 +3,13 @@ use Test::More tests => 32;
 use strict;
 require 5.008;
 
-use Math::GMPz qw( :mpz );
-
 use_ok( 'Crypt::ECDSA' );
 use_ok( 'Crypt::ECDSA::Point' );
 use_ok( 'Crypt::ECDSA::Key' );
 use_ok( 'Crypt::ECDSA::PEM' );
+
+# check all points
+our $WARN_IF_NEW_POINT_INVALID = 1;
 
 my $ecdsa = Crypt::ECDSA->new( standard => 'ECP-256', PEM => 't/test1ecdsa.pem' );
 isa_ok( $ecdsa, 'Crypt::ECDSA' );
@@ -36,7 +37,7 @@ my $written = $pem1test->write_PEM(
     key => $key,
     private => 1,
 );
-ok( $written > 0, "PEM writing of $written chars");
+ok( $written > 0, "PEM writing with a private key");
 
 my $ecdsa_reread = Crypt::ECDSA->new( PEM => 't/test1out.pem' );
 isa_ok( $ecdsa_reread, 'Crypt::ECDSA' );
@@ -77,7 +78,6 @@ isa_ok( $ecdsa_bf, 'Crypt::ECDSA' );
 ok($orig_x == $ecdsa_bf->key->Qx, "crypted x with Blowfishd");
 ok($orig_y == $ecdsa_bf->key->Qy, "crypted y with Blowfishd");
 ok($orig_secret == $ecdsa_bf->key->secret, "crypted d with Blowfish");
-
 
 $ecdsa->sign( 
   message_file => 't/Gettysburg.jpg', 

@@ -1,11 +1,10 @@
-use Test::More tests => 50;
+use Test::More tests => 57;
 
 use strict;
 no warnings;
 require 5.008;
 
-use Math::GMPz qw( :mpz );
-use Crypt::ECDSA::Util qw( bint );
+use Crypt::ECDSA::Util qw( bint hex_bint );
 
 use_ok( 'Crypt::ECDSA' );
 use_ok('Crypt::ECDSA::Curve' );
@@ -15,7 +14,8 @@ use_ok( 'Crypt::ECDSA::Key' );
 use_ok( 'Crypt::ECDSA::ECDSAVS' );
 use_ok( 'Crypt::ECDSA::PEM' );
 
-
+# check all points
+our $WARN_IF_NEW_POINT_INVALID = 1;
 
 # Test Crypt::ECDSA::Curve and Crypt::ECDSA::Point routines
 
@@ -69,9 +69,9 @@ ok( $p6 * 0 == $p7, "multiply by 0" );
 
 my $sum = $p6->curve->infinity;
 $sum->order(7);
-for my $i ( 0 .. 15 ) {
-my $pp6 = $p6 * $i;
-    ok( $p6 * $i == $sum, "multiply p6 by $i to get $sum->{X}, $sum->{Y}" );
+for my $i ( 0 .. 22 ) {
+    ok( $p6 * $i == $sum, 
+      "multiply [p6(13, 7) mod 23] by $i to get $sum->{X}, $sum->{Y}" );
     $sum += $p6;
 }
 

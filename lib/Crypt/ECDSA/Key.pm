@@ -1,16 +1,15 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = '0.046';
+our $VERSION = '0.060';
 
 use strict;
 no warnings;
 
 use Carp 'croak';
-use Math::GMPz qw( :mpz );
 
 use Crypt::ECDSA::Curve::Prime;
 use Crypt::ECDSA::Curve::Koblitz;
-use Crypt::ECDSA::Util qw( bint random_bits );
+use Crypt::ECDSA::Util qw( bint hex_bint random_bits );
 
 our $standard_curve = $Crypt::ECDSA::Curve::named_curve;
 
@@ -76,10 +75,10 @@ sub new {
     my $order = $args{order} || $self->{curve}->{point_order};
     croak("Point G(x,y) must have positive order")
       unless $order and $order > 0;
-    croak(  "point (G_x 0x"
-          . Rmpz_get_str( $x, 16 )
-          . ", G_y 0x"
-          . Rmpz_get_str( $y, 16 )
+    croak(  "point (G_x "
+          . $x->as_hex
+          . ", G_y "
+          . $y->as_hex
           . ") not on the curve, cannot create ECDSA" )
       unless $self->{curve}->is_on_curve( $x, $y );
 
@@ -139,7 +138,7 @@ sub new_key_values {
 sub new_secret_value {
     my ($self) = @_;
     my $n      = $self->{G}->{order};
-    my $len    = length( Rmpz_get_str( $n, 16 ) );
+    my $len    = length( $n->as_hex ) - 2;
     $self->{d} =
       ( random_bits( ($len + 8) * 16 ) % ( $n - 1 ) ) + 1;
     return $self->{d};
@@ -206,7 +205,7 @@ Crypt::ECDSA::Key -- ECDSA Key object package for elliptic key DSA cryptography
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
+  These are for use with Crypt::ECDSA and require Math::BigInt::GMP.
 
 =head1 METHODS
 

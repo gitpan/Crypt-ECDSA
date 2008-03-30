@@ -1,12 +1,11 @@
 package Crypt::ECDSA::Point;
 
-our $VERSION = '0.045';
+our $VERSION = '0.060';
 
 use strict;
 use warnings;
-use Math::GMPz qw( :mpz );
 use Carp qw( carp croak );
-use Crypt::ECDSA::Util qw( bint );
+use Crypt::ECDSA::Util qw( bint hex_bint );
 
 our $WARN_IF_NEW_POINT_INVALID = 0;
 
@@ -166,7 +165,7 @@ Crypt::ECDSA::Point -- Elliptic curve points for EC cryptography
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
+These are for use with Crypt::ECDSA, a cryptography module.
 
 =head1 METHODS
 

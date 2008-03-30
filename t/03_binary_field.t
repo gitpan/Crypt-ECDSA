@@ -4,10 +4,11 @@ use strict;
 no warnings;
 require 5.008;
 
-use Math::GMPz qw( :mpz );
-use Crypt::ECDSA::Util qw( bint bigint_from_coeff );
+use Crypt::ECDSA::Util qw( bint hex_bint bigint_from_coeff );
 use Crypt::ECDSA qw( multiply_F2m );
 
+# check all points
+our $WARN_IF_NEW_POINT_INVALID = 1;
 
 use_ok('Crypt::ECDSA::Curve::Koblitz');
 
@@ -23,13 +24,12 @@ my $F2M = Crypt::ECDSA::Curve::Koblitz->new(
 my $x1 = bint(6);
 my $y1 = bint(5);
 my $z1 = $x1 ^ $y1;
-
 my $z1_correct = 3;
-
 ok( $z1 == $z1_correct, "Addition of $x1 to $y1 yields $z1" );
+
+
 my $x2 = bint(13);
 my $y2 = bint(9);
-
 my $z2 = $F2M->multiply_koblitz( $x2, $y2 );
 my $z2_correct = bint(15);
 ok( $z2 == $z2_correct, "Multiply of $x2 and $y2 to get $z2" );

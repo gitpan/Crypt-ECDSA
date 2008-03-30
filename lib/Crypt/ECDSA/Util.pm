@@ -1,64 +1,56 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = '0.045';
+our $VERSION = '0.060';
 
 use strict;
 use warnings;
 require Exporter;
 our @ISA    = qw(Exporter);
-our @EXPORT = qw( 
-  two_pow random_bits bigint_from_coeff is_probably_prime 
-  make_pq_seed_counter_new make_seed_and_pq_with_sha1 
-  validate_pq_seed_counter_sha1 bint bint_hex
+our @EXPORT = qw(
+  two_pow random_bits bigint_from_coeff is_probably_prime
+  make_pq_seed_counter_new make_seed_and_pq_with_sha1
+  validate_pq_seed_counter_sha1 bint hex_bint random_hex_bytes 
 );
 use Carp qw(carp croak);
 use POSIX qw(ceil);
-use Math::GMPz qw( :mpz :primes );
+use Math::BigInt::GMP;
+use Math::BigInt only => 'GMP';
+use Math::BigInt::Random qw(random_bigint);
 use Digest::SHA;
 
-sub bint { 
-    my( $n ) = @_;
-    $n = 0 unless defined $n;
-    if( !ref $n and length $n > 2 ) {
-        if( $n =~ /^0b/i ) {
-            $n =~ s/^0b//;
-            return Rmpz_init_set_str( $n, 2 );
-        }
-        elsif($n =~ /^0x/i ) {
-            $n =~ s/^0x//;
-            return Rmpz_init_set_str( $n, 16 );
-        }
-        else {
-            return Rmpz_init_set_str( $n, 10 );
-        }
-    }
-    return Math::GMPz->new($n);    
+sub bint { Math::BigInt->new( shift || 0 ) }
+
+sub hex_bint {
+    my ($hx) = @_;
+    $hx = '0x' . $hx unless $hx =~ /^0x/;
+    return Math::BigInt->new($hx);
 }
 
-sub two_pow { 
+sub two_pow {
     my ($exp) = @_;
-    my $a = bint(1);
-    Rmpz_mul_2exp( $a, $a, $exp );    
-    return $a;
+    my $a = Math::BigInt->new(1);
+    return $a->blsft($exp);
 }
 
 # returns a bigint given a list of exponents for a
 # polynomial of base 2, so [ 3 1 0 ] = 2**3 + 2**1 + 2**0 = 8 + 2 + 1
 sub bigint_from_coeff {
     my $arrayref = shift;
-    my $n        = bint(0);
+    my $n        = bint();
     for my $t (@$arrayref) { $n += two_pow($t) }
     return $n;
 }
 
 sub random_bits {
-    my( $bitlength ) = @_;
-    my @r;
-    push @r, Rmpz_init();
-    my $state = rand_init( bint( int rand(10000) + (time % 100) ) );
-    Rmpz_urandomb( @r, $state, $bitlength, 1 );
-    rand_clear($state);
-    return $r[0];
+    my ($bitlength) = @_;
+    return random_bigint( length_bin => 1, length => $bitlength );
+}
+
+sub random_hex_bytes {
+    my ($bytelength) = @_;
+    return
+      substr( random_bigint( length_hex => 1, length => $bytelength )->as_hex,
+        2 );
 }
 
 sub make_pq_seed_counter_new {
@@ -80,32 +72,33 @@ sub make_pq_seed_counter_new {
     my $twopowN  = two_pow($N);
     my $twopowN1 = two_pow( $N - 1 );
     my $twopowL1 = two_pow( $L - 1 );
-    my $q        = Rmpz_init();
-    my $p        = Rmpz_init();
-    my $X        = Rmpz_init();
-    my $c        = Rmpz_init();
-    my $W        = Rmpz_init();
+    my $q        = bint();
+    my $p        = bint();
+    my $X        = bint();
+    my $c        = bint();
+    my $W        = bint();
+
     while (1) {
-        my $seed = random_bits( $seedlen );
-        my $seed_digest = $alg->add_bits( Rmpz_get_str( $seed, 2 ) );
-        my $U = Rmpz_init_set_str( $seed_digest->hexdigest, 16 ) % $twopowN;
+        my $seed        = random_bits($seedlen);
+        my $seed_digest = $alg->add_bits( substr( $seed->as_bin, 2 ) );
+        my $U           = hex_bint( $seed_digest->hexdigest ) % $twopowN;
         $q = $U | $twopowN1 | 1;
         next unless is_probably_prime($q);
         my $offset = 1;
         for ( my $counter = 0 ; $counter < 4096 ; ++$counter ) {
             my @v = ();
             for my $j ( 0 .. $n ) {
+                my $basenum = Math::BigInt->new( $seed + $offset + $j );
+                $basenum->bmod($twopowS);
                 $alg->reset;
-                $alg->add_bits( 
-                  Rmpz_get_str( bint( $seed + $offset + $j ) % $twopowS , 2 )
-                );
-                push @v, Rmpz_init_set_str( $alg->hexdigest, 16 );
+                $alg->add_bits( substr( $basenum->as_bin, 2 ) );
+                push @v, hex_bint( $alg->hexdigest );
             }
-            Rmpz_set_ui( $W, 0 );
+            $W = 0;
             for ( my $i = 0 ; $i < $n ; ++$i ) {
                 $W += $v[$i] * two_pow( $outlen * $i );
             }
-            $W +=  ( $v[$n] % two_pow($b) ) * two_pow( $n * $outlen );
+            $W += ( $v[$n] % two_pow($b) ) * two_pow( $n * $outlen );
             $X = $W + two_pow( $L - 1 );
             $c = $X % ( $q * 2 );
             $p = $X - ( $c - 1 );
@@ -125,24 +118,24 @@ sub make_seed_and_pq_with_sha1 {
     my $b        = $L - 1 - $n * 160;
     my $twopowG  = two_pow($g);
     my $twopowL1 = two_pow( $L - 1 );
-    my $q        = Rmpz_init();
-    my $p        = Rmpz_init();
-    my $X        = Rmpz_init();
-    my $c        = Rmpz_init();
-    my $U        = Rmpz_init(); 
-    my $W        = Rmpz_init(); 
-    my $s        = Rmpz_init();     
+    my $q        = bint();
+    my $p        = bint();
+    my $X        = bint();
+    my $c        = bint();
+    my $U        = bint();
+    my $W        = bint();
+    my $s        = bint();
     while (1) {
-        my $seed = random_bits( $g );
-        my $alg = Digest::SHA->new(1);
-        $alg->add_bits( Rmpz_get_str( $seed, 2 ) );
-        my $seed_digest = Rmpz_init_set_str( $alg->hexdigest, 16 );
+        my $seed = random_bits($g);
+        my $alg  = Digest::SHA->new(1);
+        $alg->add_bits( substr( $seed->as_bin, 2 ) );
+        my $seed_digest = hex_bint( $alg->hexdigest );
         $alg->reset;
         $s = $seed + 1;
         $s %= two_pow($g);
-        $alg->add_bits( Rmpz_get_str( $s, 2 ) );
-        $U = $seed_digest ^ Rmpz_init_set_str( $alg->hexdigest, 16 );
-        $q = $U | two_pow( 159 ) | 1;
+        $alg->add_bits( substr( $s->as_bin, 2 ) );
+        $U = $seed_digest ^ hex_bint( $alg->hexdigest );
+        $q = $U | two_pow(159) | 1;
         next unless is_probably_prime($q);
         my $offset = 2;
 
@@ -152,12 +145,12 @@ sub make_seed_and_pq_with_sha1 {
                 $alg->reset;
                 $s = $seed + $offset + $k;
                 $s %= $twopowG;
-                $alg->add_bits( Rmpz_get_str( $s, 2 ) );
-                push @v, Rmpz_init_set_str( $alg->hexdigest, 16 );
+                $alg->add_bits( substr( $s->as_bin, 2 ) );
+                push @v, hex_bint( $alg->hexdigest );
             }
-            Rmpz_set_ui( $W, 0 );
+            $W = 0;
             for ( my $i = 0 ; $i < $n ; ++$i ) {
-                $W +=  $v[$i] * two_pow( $i * 160 );
+                $W += $v[$i] * two_pow( $i * 160 );
             }
             $W += ( $v[$n] % two_pow($b) ) * two_pow( $n * 160 );
             $X = $W + two_pow( $L - 1 );
@@ -186,21 +179,61 @@ sub _check_L_N_pair {
         $func_param == 1 ? 160 : $func_param );
 }
 
+my @first_primes = (
+    2,   3,   5,   7,   11,  13,  17,  19,  23,  29,  31,  37,  41,  43,
+    47,  53,  59,  61,  67,  71,  73,  79,  83,  89,  97,  101, 103, 107,
+    109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
+    191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263,
+    269, 271, 277, 281, 283, 293
+);
+
+# Rabin-Miller primality test
 sub is_probably_prime {
-    my ($w) = @_;
+    my ( $w, $k ) = @_;
+
+    # we test $ for primality
+    # k is iteration count (default 48)
+    # estimated error rate is (1/4)**k
+    $k ||= 48;
+
+    # special cases
     return unless $w;
     $w = bint($w) unless ref $w;
-    return unless $w > 1;
-    return 1 if $w < 4;
+    $w = $w->bneg if $w < 0;
+    return   if $w < 2;
+    return 1 if $w == 2;
 
-    return Rmpz_probab_prime_p( $w, 48 );
+    # screening test
+    foreach my $f (@first_primes) { return 0 if ( $w % $f ) == 0 }
+
+    # Rabin-Miller algorithm
+    my $d = bint($w);
+    $d->bdec();
+    my $wdec = bint($d);
+    my $b;
+    for ( $b = 0 ; ( $d & 1 ) == 0 ; ++$b ) { $d->brsft(1) }
+  ITERATE_ON_K:
+    for ( 0 .. $k ) {
+        my $a;
+        do { $a = random_bigint( min => '1', max => bint( $w - 1 )->as_hex ) }
+          while ( Math::BigInt::bgcd( ( $a, $w ) ) > 1 );
+        my $j = bint();
+        $a->bmodpow( $d, $w );
+        next if $a == 1;
+        for ( my $j = 0 ; $b >= $j ; ++$j ) {
+            return 0          if $a == 1;
+            next ITERATE_ON_K if $wdec == $a;
+            $a->bmul($a);
+            $a->bmod($w);
+        }
+        return 0 if $wdec != $a;
+    }
+    return 1;
 }
 
 sub validate_pq_seed_counter_sha1 {
     croak "Not implemented yet";
 }
-
-
 
 =head1 NAME
 
@@ -208,7 +241,8 @@ Crypt::ECDSA::Util -- Utility functions for Crypt::ECDSA
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module
+  These are for use with Crypt::ECDSA and require Math::BigInt::GMP.
+
 
 =head1 METHODS
 

@@ -1,13 +1,15 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.046';
+our $VERSION = '0.060';
 
 use base Crypt::ECDSA::Curve;
 
 use strict;
 use warnings;
 use Carp qw( croak );
-use Math::GMPz qw( :mpz );
+
+use Math::BigInt::GMP;
+use Math::BigInt lib => 'GMP';
 
 use Crypt::ECDSA;
 use Crypt::ECDSA::Curve;
@@ -25,14 +27,13 @@ sub equation {
 
 sub multiply_koblitz {
     my ( $self, $x, $y ) = @_;
-    return bint(0) unless $x and $y;
-    return $x if $y == 1;
-    return $y if $x == 1;
-    $y = bint($y) unless ref $y;
+    return bint() unless $x and $y;
     $x = bint($x) unless ref $x;
+    $y = bint($y) unless ref $y;
     my $mod = bint( $self->{irreducible} );
-
-    my $retval = Crypt::ECDSA::multiply_F2m( $x, $y, $mod );
+    my $retval = bint(1);
+    $retval->{value} = 
+      Crypt::ECDSA::multiply_F2m( $x->{value}, $y->{value}, $mod->{value} );
     return $retval;
 }
 
@@ -41,7 +42,8 @@ sub invert_koblitz {
     $x = bint($x) unless ref $x;
     my $mod = bint( $self->{irreducible} );
 
-    my $retval = Crypt::ECDSA::invert_F2m( $x, $mod );
+    my $retval = bint(1);
+    $retval->{value} = Crypt::ECDSA::invert_F2m( $x->{value}, $mod->{value} );
     return $retval;
 }
 
@@ -146,7 +148,7 @@ sub multiply_on_curve {
         order => $order,
         curve => $self
     );
-    for ( my $i = length( Rmpz_get_str( $scalar, 2 ) ) - 1 ; $i >= 0 ; --$i ) {
+    for ( my $i = length( $scalar->as_bin ) - 3 ; $i >= 0 ; --$i ) {
         $S += $S;
         $S += $Q if $scalar & two_pow($i);
     }
@@ -162,7 +164,7 @@ sub is_weak_curve {
 sub to_octet {
     my ( $self, $x, $y, $compress ) = @_;
     my $octet;
-    my $x_octet = pack "C", split( '', Rmpz_get_str( $x, 16 ) );
+    my $x_octet = pack "C", split( '', substr( $x->as_hex, 2 ) );
     if ($compress) {
         my $first_byte;
         if ( $x == 0 ) {
@@ -175,14 +177,14 @@ sub to_octet {
         return $first_byte . $x_octet;
     }
     else {
-        my $y_octet = pack "C", split( '', Rmpz_get_str( $y, 16 ) );
+        my $y_octet = pack "C", split( '', substr( $y->as_hex, 2 ) );
         return "\x04" . $x_octet . $y_octet;
     }
 }
 
 sub from_octet {
     my ( $self, $octet ) = @_;
-    my $q_bytes       = ceil( length( Rmpz_get_str( $self->{q}, 2 ) ) / 8 );
+    my $q_bytes       = ceil( ( length( $self->{q}->as_bin ) - 2 ) / 8 );
     my $oct_len       = length $octet;
     my $mod           = bint( $self->{irreducible} );
     my $invalid_point = 1;
@@ -192,16 +194,14 @@ sub from_octet {
         my $y_test;
         $y_test = 0 if $y_byte eq "\x02";
         $y_test = 1 if $y_byte eq "\x03";
-        my $x =
-          Rmpz_init_set_str( ( pack "X*", unpack "C*", substr( $octet, 1 ) ),
-            16 );
+        my $x = hex_bint( pack( "X*", unpack "C*", substr( $octet, 1 ) ) );
         if ( $x >= 0 and $x < $mod and defined $y_test ) {
             if ( $x == 0 ) {
                 $y             = bint( $self->{b} )**( 2 * $self->{N} + 1 );
                 $invalid_point = 0;
             }
             else {
-                my $alpha = Rmpz_init();
+                my $alpha = bint();
                 $alpha =
                   $x + $self->{a} + $self->multiply_koblitz( $self->{b},
                     $self->invert_koblitz( $x * $x ) );
@@ -230,8 +230,8 @@ sub from_octet {
         if ( $m_byte eq "\x04" ) {
             my $x_bytes = substr $octet, 1, $q_bytes;
             my $y_bytes = substr $octet, 1 + $q_bytes, $q_bytes;
-            $x = Rmpz_init_set_str( ( pack "X*", unpack "C*", $x_bytes ), 16 );
-            $y = Rmpz_init_set_str( ( pack "X*", unpack "C*", $y_bytes ), 16 );
+            $x = hex_bint( pack( "X*", unpack "C*", $x_bytes ) );
+            $y = hex_bint( pack( "X*", unpack "C*", $y_bytes ) );
             $invalid_point = 0
               if $y >= 0
               and $y < $mod
@@ -254,7 +254,8 @@ Crypt::ECDSA::Curve::Koblitz -- binary (F(2**N)) curves for EC cryptography
 
 =head1 DESCRIPTION
 
-  These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
+  These are for use with Crypt::ECDSA and require Math::BigInt::GMP.
+
 
 =head1 METHODS
 

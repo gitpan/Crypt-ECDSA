@@ -1,12 +1,11 @@
 package Crypt::ECDSA::PEM;
 
-our $VERSION = '0.05';
+our $VERSION = '0.060';
 
 use strict;
 use warnings;
 
 use Carp qw( carp croak );
-use Math::GMPz qw( :mpz );
 use MIME::Base64 qw( encode_base64 decode_base64 );
 use Encoding::BER::DER;
 use Crypt::CBC;
@@ -14,11 +13,13 @@ use Crypt::Rijndael;
 use Text::Wrap;
 use Digest::MD5 qw( md5 );
 
-use Crypt::ECDSA::Util qw( bint random_bits );
+use Crypt::ECDSA::Util qw( bint hex_bint random_hex_bytes );
 
 require Exporter;
 our @ISA    = qw(Exporter);
 our @EXPORT = qw( read_ECDSA_signature_file write_ECDSA_signature_file );
+
+my $DEBUG = 0;
 
 our $parameters_label      = "EC PARAMETERS";
 our $private_pem_label     = "EC PRIVATE KEY";
@@ -28,8 +29,6 @@ our $ecdsa_signature_label = "ECDSA SIGNATURE";
 # See http://www.secg.org/collateral/sec1.pdf
 # and
 # http://tools.ietf.org/html/draft-ietf-pkix-sha2-dsa-ecdsa-00.txt
-
-my $DEBUG = 0;
 
 sub new {
     my ( $class, %args ) = @_;
@@ -156,6 +155,7 @@ sub write_PEM {
         $txt = $self->key_to_private_pem( $key, $password, $cipher );
     }
     else {
+        warn "making public key PEM" if $DEBUG;
         $txt = $self->key_to_public_pem($key);
     }
     open my $outfh, '>', $filename or croak "Cannot write to $filename: $!";
@@ -169,7 +169,7 @@ sub key_to_private_pem {
     my ( $self, $key, $password, $cipher ) = @_;
     $cipher = 'Rijndael' unless $cipher;
     my $version      = 1;
-    my $d_octet      = pack "H*", Rmpz_get_str( $key->secret, 16 );
+    my $d_octet      = pack "H*", substr( $key->secret->as_hex, 2 );
     my $ans1_numbers = standard_curve_to_ANS1( $key->curve->standard );
     my $public_octet = $key->curve->to_octet( $key->Qx, $key->Qy );
     my $coding       = Encoding::BER::DER->new();
@@ -223,7 +223,8 @@ sub key_to_private_pem {
         my $begin  = 'BEGIN ';
         my $end    = 'END ';
         $PEM =
-            "$dashes$begin$private_pem_label$dashes\n" . $txt
+            "$dashes$begin$private_pem_label$dashes\n" 
+          . $txt
           . "\n$dashes$end$private_pem_label$dashes";
     }
     $self->{private_pem_tree}->{output_PEM} = $PEM;
@@ -274,8 +275,9 @@ sub key_to_public_PEM {
     my $dashes = '-----';
     my $begin  = 'BEGIN ';
     my $end    = 'END ';
-    my $PEM    =
-        "$dashes$begin$public_pem_label$dashes\n" . $txt
+    my $PEM =
+        "$dashes$begin$public_pem_label$dashes\n" 
+      . $txt
       . "\n$dashes$end$public_pem_label$dashes";
     $self->{public_pem_tree}->{output_PEM} = $PEM;
     return $PEM;
@@ -293,14 +295,10 @@ sub read_ECDSA_signature_file {
     require Math::BigInt;
     my $coding = Encoding::BER::DER->new();
     my $tree   = $coding->decode($content);
-    my $r      =
-      Rmpz_init_set_str( substr( $tree->{value}->[0]->{value}->as_hex, 2 ),
-        16 );
-    my $s =
-      Rmpz_init_set_str( substr( $tree->{value}->[1]->{value}->as_hex, 2 ),
-        16 );
+    my $r      = bint( $tree->{value}->[0]->{value}->as_hex );
+    my $s      = bint( $tree->{value}->[1]->{value}->as_hex );
     warn "r is $r and s is $s" if $DEBUG;
-    return ( bint($r), bint($s) );
+    return ( $r, $s );
 }
 
 sub write_ECDSA_signature_file {
@@ -308,19 +306,18 @@ sub write_ECDSA_signature_file {
     open( my $outfh, '>', $filename )
       or croak("Cannot open file $filename for writing: $!");
     binmode $outfh;
-    require Math::BigInt;
     my $coding = Encoding::BER::DER->new();
     warn "r is $r and s is $s" if $DEBUG;
     my $tree = {
         'type'  => [ 'universal', 'constructed', 'sequence' ],
         'value' => [
             {
-                'value' => '0x' . Rmpz_get_str( $r, 16 ),
-                'type' => [ 'universal', 'primitive', 'integer', ],
+                'value' => $r->as_hex,
+                'type'  => [ 'universal', 'primitive', 'integer', ],
             },
             {
-                'value' => '0x' . Rmpz_get_str( $s, 16 ),
-                'type' => [ 'universal', 'primitive', 'integer', ],
+                'value' => $s->as_hex,
+                'type'  => [ 'universal', 'primitive', 'integer', ],
             },
         ],
     };
@@ -331,13 +328,13 @@ sub write_ECDSA_signature_file {
 
 sub DER_octet_string_to_bint {
     my ($str) = @_;
-    return Rmpz_init_set_str( unpack( 'H*', $str ), 16 );
+    return hex_bint( unpack( 'H*', $str ) );
 }
 
 sub bint_to_DER_octet_string {
     my ($n) = @_;
     $n = bint($n) unless ref $n;
-    return uc Rmpz_get_str( $n, 16 );
+    return uc substr( $n->as_hex, 2 );
 }
 
 sub DER_public_key_to_point {
@@ -424,15 +421,19 @@ sub encrypt_pem {
     my ( $pem_lines, $cipher, $password ) = @_;
     my $DEK_type = $cipher_to_DEK->{$cipher};
     croak "Need password and cipher type" unless $password and $DEK_type;
+    warn "encrypting PEM with password $password and type $DEK_type" if $DEBUG;
     my $bytes_needed = $cipher_iv_bitsize->{$cipher} / 8;
     my $iv_str       = '';
-    while ( length($iv_str) != $bytes_needed * 2 ) {
-        $iv_str =
-          uc Rmpz_get_str( random_bits( $cipher_iv_bitsize->{$cipher} ), 16 );
-    }
+    do {
+        $iv_str = uc random_hex_bytes( $cipher_iv_bitsize->{$cipher} / 4 );
+        warn "desired length is ", $cipher_iv_bitsize->{$cipher} / 4,
+          " and generated length of $iv_str is ", length($iv_str)
+          if $DEBUG;
+    } while length($iv_str) * 4 != $cipher_iv_bitsize->{$cipher};
     my $iv = pack "H*", $iv_str;
     my $keystring = evp_key( $password, $iv, $cipher_key_bytesize->{$cipher} );
     my $work = join '', @{$pem_lines};
+    warn "decoding base64" if $DEBUG;
     $work = decode_base64($work);
     my $alg = Crypt::CBC->new(
         -literal_key => 1,
@@ -442,7 +443,9 @@ sub encrypt_pem {
         -header      => 'none',
         -keysize     => $cipher_key_bytesize->{$cipher},
     );
+    warn "encrypting binary" if $DEBUG;
     $work = $alg->encrypt($work);
+    warn "beginning base64 encode" if $DEBUG;
     my $b64str = encode_base64($work);
     $b64str =~ s/\s//g;
     $Text::Wrap::columns = 65;
@@ -515,7 +518,8 @@ Crypt::ECDSA::PEM -- ECDSA PEM file management for elliptic key DSA cryptography
 
 =head1 DESCRIPTION
 
-These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
+  These are for use with Crypt::ECDSA and require Math::BigInt::GMP.
+
 
 =head1 METHODS
 

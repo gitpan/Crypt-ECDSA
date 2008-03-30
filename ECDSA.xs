@@ -8,8 +8,8 @@
 #endif
 
 /*
-Crypt::ECDSA.xs, finite binary field math routines needed for adequate speed
-This code copyright (C) William Hererra, 2007, under the terms of Perl itself
+Crypt::ECDSA.xs, prime and finite binary field math routines for better speed
+This code copyright (C) William Hererra, 2007, 2008, under terms of Perl itself
 */
 
 
@@ -45,7 +45,7 @@ SV * multiply_F2m( SV * x_in, SV * y_in, SV * mod_in ) {
     New(1, mpz_t_obj, 1, mpz_t);
     if(mpz_t_obj == NULL) croak("Failed to allocate memory in multiply_F2m function");
     obj_ref = newSViv(0);
-    obj = newSVrv(obj_ref, "Math::GMPz");
+    obj = newSVrv(obj_ref, "Math::BigInt::GMP");
     mpz_init_set(*mpz_t_obj, product);
 
     sv_setiv(obj, INT2PTR(IV, mpz_t_obj));
@@ -88,7 +88,7 @@ SV * invert_F2m( SV * x_in, SV * mod_in ) {
     New( 1, mpz_t_obj, 1, mpz_t );
     if(mpz_t_obj == NULL) croak("Failed to allocate memory in invert_F2m function");
     obj_ref = newSViv(0);
-    obj = newSVrv( obj_ref, "Math::GMPz" );
+    obj = newSVrv( obj_ref, "Math::BigInt::GMP" );
     mpz_init_set( *mpz_t_obj, b );
 
     sv_setiv( obj, INT2PTR(IV, mpz_t_obj) );
@@ -97,10 +97,8 @@ SV * invert_F2m( SV * x_in, SV * mod_in ) {
 }
 
 
-
 MODULE  = Crypt::ECDSA		PACKAGE = Crypt::ECDSA 
-
-PROTOTYPES: DISABLE
+PROTOTYPES: ENABLE
 
 
 SV *

@@ -1,17 +1,16 @@
 package Crypt::ECDSA::Curve::Prime;
 
-our $VERSION = '0.045';
+our $VERSION = '0.060';
 
 use base Crypt::ECDSA::Curve;
 
 use strict;
 use warnings;
-use Carp 'croak';
-use Math::GMPz qw( :mpz );
+use Carp  qw( carp croak );
 use POSIX qw( ceil );
 
 use Crypt::ECDSA::Point;
-use Crypt::ECDSA::Util qw( bint );
+use Crypt::ECDSA::Util qw( bint hex_bint );
 
 sub equation { 'y * y = x * x * x + a * x + b, mod p, with a = -3' }
 
@@ -33,10 +32,11 @@ sub add_on_curve {
         return $self->infinity if ( $y1 + $y2 ) % $p == 0;
         return $self->double_on_curve( $x1, $y1, $order );
     }
-    Rmpz_invert( $dx2x1, $dx2x1, $p );
+    $dx2x1->bmodinv($p);
     my $lm    = bint( $dy2y1 * $dx2x1 % $p );
     my $x_sum = bint( ( $lm * $lm - $x1 - $x2 ) % $p );
     my $y_sum = bint( ( $lm * ( $x1 - $x_sum ) - $y1 ) % $p );
+    return $self->infinity if $x_sum->is_nan or $y_sum->is_nan;
     return Crypt::ECDSA::Point->new(
         X     => $x_sum,
         Y     => $y_sum,
@@ -56,11 +56,11 @@ sub double_on_curve {
     my $p        = $self->{p};
     my $a        = $self->{a};
     my $double_y = bint( $y * 2 );
-    Rmpz_invert( $double_y, $double_y, $p );
+    $double_y->bmodinv($p);
     my $lm    = ( ( 3 * $x * $x + $a ) * $double_y ) % $p;
     my $x_sum = ( $lm * $lm - 2 * $x ) % $p;
     my $y_sum = ( $lm * ( $x - $x_sum ) - $y ) % $p;
-
+    return $self->infinity if $x_sum->is_nan or $y_sum->is_nan;
     return Crypt::ECDSA::Point->new(
         X     => $x_sum,
         Y     => $y_sum,
@@ -158,36 +158,35 @@ sub is_weak_curve {
 sub to_octet {
     my ( $self, $x, $y, $compress ) = @_;
     my $octet;
-    my $x_octet = pack 'H*', Rmpz_get_str( $x, 16 );
+    my $x_octet = pack 'H*', substr( $x->as_hex, 2 );
     if ($compress) {
         my $first_byte = $y % 2 ? "\x03" : "\x02";
         return $first_byte . $x_octet;
     }
     else {
-        my $y_octet = pack 'H*', Rmpz_get_str( $y, 16 );
+        my $y_octet = pack 'H*', substr( $y->as_hex, 2 );
         return "\x04" . $x_octet . $y_octet;
     }
 }
 
 sub from_octet {
     my ( $self, $octet ) = @_;
-    my $q_bytes       = ceil( length( Rmpz_get_str( $self->{q}, 2 ) ) / 8 );
+    my $q_bytes       = ceil( ( length( $self->{q}->as_bin ) - 2 ) / 8 );
     my $oct_len       = length $octet;
     my $invalid_point = 1;
-    my $x = Rmpz_init;
-    my $y = Rmpz_init;
+    my $x = bint();
+    my $y = bint();
     if ( $oct_len == $q_bytes + 1 ) {    # compressed point
         my $y_byte = substr( $octet, 0, 1 );
         my $y_test;
         $y_test = 0 if $y_byte eq "\x02";
         $y_test = 1 if $y_byte eq "\x03";
-        my $x =
-          Rmpz_init_set_str( unpack( 'H*', substr( $octet, 1 ) ), 16 );
+        my $x   = hex_bint( unpack( 'H*', substr( $octet, 1 ) ) );
         if ( $x >= 0 and $x < $self->{p} and defined $y_test ) {
-            my $alpha = Rmpz_init();
+            my $alpha = bint();
             $alpha =
               ( $x * $x * $x + $self->{a} * $x + $self->{b} ) % $self->{p};
-            Rmpz_sqrt( $alpha, $alpha );
+            $alpha->bsqrt();
             if ( ( $alpha & 1 ) == $y_test ) {
                 $y = bint( $alpha );
             }
@@ -202,8 +201,8 @@ sub from_octet {
         if ( $m_byte eq "\x04" ) {
             my $x_bytes = substr $octet, 1, $q_bytes;
             my $y_bytes = substr $octet, 1 + $q_bytes, $q_bytes;
-            $x = Rmpz_init_set_str( ( unpack "H*", $x_bytes ), 16 );
-            $y = Rmpz_init_set_str( ( unpack "H*", $y_bytes ), 16 );
+            $x = hex_bint( unpack( "H*", $x_bytes ) );
+            $y = hex_bint( unpack( "H*", $y_bytes ) );
             $invalid_point = 0
               if $y >= 0
               and $y < $self->{p}
@@ -226,7 +225,7 @@ Crypt::ECDSA::Curve::Prime -- Elliptic curves ove F(q), with q prime, for EC cry
 
 =head1 DESCRIPTION
 
-  These are for use with Crypt::ECDSA, a Math::GMPz based cryptography module.
+  These are for use with Crypt::ECDSA and require Math::BigInt::GMP.
 
 =over 4
 

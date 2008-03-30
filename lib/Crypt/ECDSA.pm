@@ -1,16 +1,14 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.052';
+our $VERSION = '0.060';
 
 use strict;
 use warnings;
 use Carp qw( carp croak );
-use Math::GMPz qw( :mpz );
 use Digest::SHA;
 
+use Crypt::ECDSA::Util qw( bint hex_bint random_bits );
 use Crypt::ECDSA::Key;
-use Crypt::ECDSA::Util qw( bint random_bits );
-
 require Exporter;
 require DynaLoader;
 our @ISA = qw(Exporter DynaLoader);
@@ -53,12 +51,12 @@ sub make_text_digest {
     my ( $self, $text ) = @_;
     $self->{algo}->reset;
     $self->{algo}->add( $text );
-    return Rmpz_init_set_str( $self->{algo}->hexdigest, 16 );
+    return hex_bint( $self->{algo}->hexdigest );
 }
 
 sub _make_ephemeral_k {
     my( $self, $n ) = @_;
-    my $len = ( length( Rmpz_get_str( $n, 16 ) ) + 8 ) * 16;
+    my $len = ( length( $n->as_hex ) + 6 ) * 16;
     return random_bits($len) % ( $n - 1 ) + 1;
 }
 
@@ -97,8 +95,8 @@ sub signature {
         my $kG = $G * $k;
         $r  = bint( $kG->X % $n ) ;
         next if $r == 0;
-        my $kinv = Rmpz_init();
-        Rmpz_invert( $kinv, $k, $n ) or next;
+        my $kinv = bint();
+        $kinv = $k->bmodinv( $n ) or next;
         $s = bint( ( $kinv * ( $e + ($d * $r) % $n ) ) % $n );
         next if $s == 0;
         if( $args{sig_file} ) {
@@ -154,14 +152,14 @@ sub verify {
       || ( $args{message} ? $self->make_text_digest($args{message}) :
            croak("Need a message or the hash of a message for the signature" ) )
     ;
-    my $w  = Rmpz_init;
-    my $invert_ok = Rmpz_invert( $w, $s, $n );
-    unless( $invert_ok ) {
+    my $w  = bint();
+    $w = $s->bmodinv($n);
+    unless( $w ) {
         carp( "Error: s and n are not coprime in signature verify" );
         return;
     }
-    my $u_g = Rmpz_init;
-    my $u_r = Rmpz_init;
+    my $u_g = bint();
+    my $u_r = bint();
     $u_g = ( $e * $w ) % $n;
     $u_r = ( $r * $w ) % $n;
     my $prod = $G * $u_g + $key->Q * $u_r;
@@ -179,14 +177,12 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 =head1 DESCRIPTION
 
     An implementation of the elliptic curve digital signature algorithm in Perl,
-    using the Math::GMPz library and a little C for speed.
+    using the Math::BigInt::GMP library and a little C for speed.
 
     Implements the pending FIPS 186-3 ECDSA standard for digital signatures using
-    elliptical key crytography.  Like FIPS 186-3, this is preliminary-- not yet
-    ready for full use.  It does contain a working implementation of the elliptical
-    key crypto found in the current 186-2 standard.  The final details of the 186-3
-    standard are still being worked out.  Perhaps a preliminary version of signature
-    in the NEW standard might be the following, which uses SHA-256 instead of the
+    elliptical key crytography.  Routines include a working implementation of 
+    elliptical key cryptography.  Perhaps a preliminary version of signature
+    in the newer standard might be the following, which uses SHA-256 instead of the
     current SHA-1 digest:
 
     my $ecdsa = Crypt::ECDSA->new(
@@ -337,10 +333,6 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
    5. Calculate (x1,y1) = u1G + u2QA.
    6. The signature is valid if x1 = r(mod n), invalid otherwise.
 
-=head1  TODO
-
-    The Koblitz curve point multiplication algorithm could be optimized a bit more.
-    Digital X.509 certificate handling might be implemented for OpenSSL compatibility.
 
 =head1 AUTHOR
 
@@ -348,7 +340,7 @@ William Herrera (wherrera@skylightview.com)
 
 =head1 COPYRIGHT
 
-  Copyright (C) 2007 William Hererra.  All Rights Reserved.
+  Copyright (C) 2007, 2008 William Hererra.  All Rights Reserved.
 
   This module is free software; you can redistribute it and/or modify it
   under the same terms as Perl itself.
