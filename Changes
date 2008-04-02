@@ -37,5 +37,8 @@ Revision history for Perl module Crypt::ECDSA
 0.052 Fri 23 March 2007
     - added missing test file
     
-0.060 Sum 30 March 2008
+0.060 Sun 30 March 2008
     - converted math routines to use Math:::BigInt::GMP, for better compatibility
+
+0.061 Wed 2 April 2008
+    - fixed a side effect on args passsed in to signature verify function

@@ -225,11 +225,10 @@ sub SigVer_test {
             $sh1->add_bits($bits);
             my $hash_digest = hex_bint( $sh1->hexdigest );
             my $verified    = 'F';
-
             if ( $ecdsa->key->curve->is_on_curve( $qx, $qy ) ) {
                 $ecdsa->key->set_public_Q( $qx, $qy );
                 $verified = 'P'
-                  if $ecdsa->verify( r => $r, s => $s, hash => $hash_digest );
+                  if $ecdsa->verify( r => $r, 's' => $s, hash => $hash_digest );
             }
             $retval .= "Msg = "
               . ihex($text)

@@ -38,7 +38,7 @@ my ( $correct_sigver_hashes, $correct_sigver_comments ) =
   Crypt::ECDSA::ECDSAVS::process_lines( 
     Crypt::ECDSA::ECDSAVS::read_file('SigVer_correct') );
 
-ok(Compare( $own_sigver_hashes->{'P-192'}->{Result}, $correct_sigver_hashes->{'P-192'}->{Result} ), 
+ok(Compare( $own_sigver_hashes->{'P-192'}, $correct_sigver_hashes->{'P-192'} ), 
   "ECDSA signature verification check is ok for P-192" );
-ok(Compare( $own_sigver_hashes->{'K-233'}->{Result}, $correct_sigver_hashes->{'K-233'}->{Result} ), 
+ok(Compare( $own_sigver_hashes->{'K-233'}, $correct_sigver_hashes->{'K-233'} ), 
   "ECDSA signature verification check is ok for K-233" );

@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.060';
+our $VERSION = '0.061';
 
 use strict;
 use warnings;
@@ -137,7 +137,7 @@ sub verify {
     }
     my( $r, $s ) = $args{sig_file}
       ? Crypt::ECDSA::PEM::read_ECDSA_signature_file( $args{sig_file} )
-      : ( $args{r}, $args{'s'} )
+      : ( bint( $args{r} ), bint( $args{'s'} ) )
     ;
     return if $r < 1 or $r >= $q;
     return if $s < 1 or $s >= $q;

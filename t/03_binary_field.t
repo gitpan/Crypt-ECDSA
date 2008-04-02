@@ -1,4 +1,4 @@
-use Test::More tests => 45;
+use Test::More tests => 145;
 
 use strict;
 no warnings;
@@ -106,7 +106,7 @@ ok( $irr == $pG->{curve}->{irreducible},
     "Check polynomial basis for K-233" );
 
 # scalar multiplication
-for my $k ( 1262 .. 1281 ) {
+for my $k ( 1262 .. 1381 ) {
     my $Q = $pG1 * $k;
     ok( $Q->is_on_curve, "Point Q = $k" . "G is on curve" );
 }
