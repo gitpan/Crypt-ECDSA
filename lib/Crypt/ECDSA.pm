@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.061';
+our $VERSION = '0.062';
 
 use strict;
 use warnings;
@@ -12,7 +12,8 @@ use Crypt::ECDSA::Key;
 require Exporter;
 require DynaLoader;
 our @ISA = qw(Exporter DynaLoader);
-our @EXPORT = qw( multiply_F2m invert_F2m );
+our @EXPORT = qw( multiply_F2m invert_F2m gmp_is_probably_prime );
+
 bootstrap Crypt::ECDSA $VERSION;
 
 my $DEBUG = 0;

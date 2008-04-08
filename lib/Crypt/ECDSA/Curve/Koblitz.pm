@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.060';
+our $VERSION = '0.062';
 
 use base Crypt::ECDSA::Curve;
 
@@ -11,7 +11,7 @@ use Carp qw( croak );
 use Math::BigInt::GMP;
 use Math::BigInt lib => 'GMP';
 
-use Crypt::ECDSA;
+use Crypt::ECDSA qw( multiply_F2m invert_F2m );
 use Crypt::ECDSA::Curve;
 use Crypt::ECDSA::Point;
 use Crypt::ECDSA::Util qw( bint two_pow );
@@ -41,7 +41,6 @@ sub invert_koblitz {
     my ( $self, $x ) = @_;
     $x = bint($x) unless ref $x;
     my $mod = bint( $self->{irreducible} );
-
     my $retval = bint(1);
     $retval->{value} = Crypt::ECDSA::invert_F2m( $x->{value}, $mod->{value} );
     return $retval;

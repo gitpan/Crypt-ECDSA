@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = '0.060';
+our $VERSION = '0.062';
 
 use strict;
 use warnings;
@@ -15,8 +15,8 @@ use Carp qw(carp croak);
 use POSIX qw(ceil);
 use Math::BigInt::GMP;
 use Math::BigInt only => 'GMP';
-use Math::BigInt::Random qw(random_bigint);
 use Digest::SHA;
+
 
 sub bint { Math::BigInt->new( shift || 0 ) }
 
@@ -43,14 +43,15 @@ sub bigint_from_coeff {
 
 sub random_bits {
     my ($bitlength) = @_;
-    return random_bigint( length_bin => 1, length => $bitlength );
+    require Crypt::ECDSA;
+    my $result = bint(1);
+    $result->{value} = Crypt::ECDSA::gmp_random_bits( $bitlength );
+    return $result;
 }
 
 sub random_hex_bytes {
     my ($bytelength) = @_;
-    return
-      substr( random_bigint( length_hex => 1, length => $bytelength )->as_hex,
-        2 );
+    return substr( random_bits( $bytelength * 8 )->as_hex, 2 );
 }
 
 sub make_pq_seed_counter_new {
@@ -179,56 +180,13 @@ sub _check_L_N_pair {
         $func_param == 1 ? 160 : $func_param );
 }
 
-my @first_primes = (
-    2,   3,   5,   7,   11,  13,  17,  19,  23,  29,  31,  37,  41,  43,
-    47,  53,  59,  61,  67,  71,  73,  79,  83,  89,  97,  101, 103, 107,
-    109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
-    191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263,
-    269, 271, 277, 281, 283, 293
-);
-
 # Rabin-Miller primality test
 sub is_probably_prime {
     my ( $w, $k ) = @_;
-
-    # we test $ for primality
-    # k is iteration count (default 48)
-    # estimated error rate is (1/4)**k
-    $k ||= 48;
-
-    # special cases
-    return unless $w;
+    $k = 50 unless $k;
     $w = bint($w) unless ref $w;
-    $w = $w->bneg if $w < 0;
-    return   if $w < 2;
-    return 1 if $w == 2;
-
-    # screening test
-    foreach my $f (@first_primes) { return 0 if ( $w % $f ) == 0 }
-
-    # Rabin-Miller algorithm
-    my $d = bint($w);
-    $d->bdec();
-    my $wdec = bint($d);
-    my $b;
-    for ( $b = 0 ; ( $d & 1 ) == 0 ; ++$b ) { $d->brsft(1) }
-  ITERATE_ON_K:
-    for ( 0 .. $k ) {
-        my $a;
-        do { $a = random_bigint( min => '1', max => bint( $w - 1 )->as_hex ) }
-          while ( Math::BigInt::bgcd( ( $a, $w ) ) > 1 );
-        my $j = bint();
-        $a->bmodpow( $d, $w );
-        next if $a == 1;
-        for ( my $j = 0 ; $b >= $j ; ++$j ) {
-            return 0          if $a == 1;
-            next ITERATE_ON_K if $wdec == $a;
-            $a->bmul($a);
-            $a->bmod($w);
-        }
-        return 0 if $wdec != $a;
-    }
-    return 1;
+    require Crypt::ECDSA;
+    return Crypt::ECDSA::gmp_is_probably_prime( $w->{value}, $k );
 }
 
 sub validate_pq_seed_counter_sha1 {

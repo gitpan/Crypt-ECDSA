@@ -1,4 +1,4 @@
-use Test::More tests => 57;
+use Test::More tests => 157;
 
 use strict;
 no warnings;
@@ -52,10 +52,10 @@ isa_ok( $curve_P521, 'Crypt::ECDSA::Curve' );
 
 # ECC curve math (prime fields)
 # X9.62 B.3
-my $p1 = Crypt::ECDSA::Point->new( X => 3,  Y => 10,  curve => $curve_p23 );
-my $p2 = Crypt::ECDSA::Point->new( X => 9,  Y => 7,   curve => $curve_p23 );
-my $p3 = Crypt::ECDSA::Point->new( X => 17, Y => 20,  curve => $curve_p23 );
-my $p4 = Crypt::ECDSA::Point->new( X => 7,  Y => 12,  curve => $curve_p23 );
+my $p1 = Crypt::ECDSA::Point->new( X => 3,  Y =>  10,  curve => $curve_p23 );
+my $p2 = Crypt::ECDSA::Point->new( X => 9,  Y =>   7,   curve => $curve_p23 );
+my $p3 = Crypt::ECDSA::Point->new( X => 17, Y =>  20,  curve => $curve_p23 );
+my $p4 = Crypt::ECDSA::Point->new( X => 7,  Y =>  12,  curve => $curve_p23 );
 my $p5 = Crypt::ECDSA::Point->new( X => 7,  Y => -12, curve => $curve_p23 );
 my $p6 =
   Crypt::ECDSA::Point->new( X => 13, Y => 7, curve => $curve_p23, order => 7 );
@@ -64,12 +64,16 @@ ok( $p1->double() == $p4, "Double a point" );
 ok( $p1 + $p1 == $p4,     "add more points" );
 ok( $p1 * 2 == $p4,       "scalar point multiply" );
 my $p7 = $p4 + $p5;
-ok( $p7 == $p7->curve->infinity, "Infinity as a result" );
+ok( $p7 == $p7->curve->infinity, 
+  "Infinity as a result of " .
+ " ( " . $p4->{X} . " , " . $p4->{Y} . " ) + " .
+ " ( " . $p5->{X} . " , " . $p5->{Y} . " ) = " .
+ " ( " . $p7->{X} . " , " . $p7->{Y} . " )" );
 ok( $p6 * 0 == $p7, "multiply by 0" );
 
 my $sum = $p6->curve->infinity;
 $sum->order(7);
-for my $i ( 0 .. 22 ) {
+for my $i ( 0 .. 122 ) {
     ok( $p6 * $i == $sum, 
       "multiply [p6(13, 7) mod 23] by $i to get $sum->{X}, $sum->{Y}" );
     $sum += $p6;

@@ -42,3 +42,8 @@ Revision history for Perl module Crypt::ECDSA
 
 0.061 Wed 2 April 2008
     - fixed a side effect on args passsed in to signature verify function
+
+0.062 Fri 5 April 2008
+    - added more XS routines
+    - removed an undocumented dependency
+

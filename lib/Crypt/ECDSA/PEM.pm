@@ -1,6 +1,6 @@
 package Crypt::ECDSA::PEM;
 
-our $VERSION = '0.060';
+our $VERSION = '0.062';
 
 use strict;
 use warnings;
@@ -425,9 +425,9 @@ sub encrypt_pem {
     my $bytes_needed = $cipher_iv_bitsize->{$cipher} / 8;
     my $iv_str       = '';
     do {
-        $iv_str = uc random_hex_bytes( $cipher_iv_bitsize->{$cipher} / 4 );
-        warn "desired length is ", $cipher_iv_bitsize->{$cipher} / 4,
-          " and generated length of $iv_str is ", length($iv_str)
+        $iv_str = uc random_hex_bytes( $cipher_iv_bitsize->{$cipher} / 8 );
+        warn "desired bit length is ", $cipher_iv_bitsize->{$cipher},
+          " and generated length of $iv_str is ", length($iv_str) * 8
           if $DEBUG;
     } while length($iv_str) * 4 != $cipher_iv_bitsize->{$cipher};
     my $iv = pack "H*", $iv_str;
