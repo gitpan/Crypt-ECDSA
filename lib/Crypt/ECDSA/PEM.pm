@@ -1,6 +1,6 @@
 package Crypt::ECDSA::PEM;
 
-our $VERSION = '0.062';
+our $VERSION = '0.063';
 
 use strict;
 use warnings;
@@ -570,9 +570,39 @@ Crypt::ECDSA::PEM -- ECDSA PEM file management for elliptic key DSA cryptography
     Create and return a PEM file containing the pirvate and public keys as 
     a scalar.  The second, password parameter is optional.
 
-
 =back
 
+=head2 Class Internal Functions
+
+=over 4
+
+=item B<ANS1_oid_to_standard_curve>
+
+=item B<DER_octet_string_to_bint>
+
+=item B<DER_public_key_to_point>
+
+=item B<bint_to_DER_octet_string>
+
+=item B<decrypt_pem>
+
+=item B<encrypt_pem>
+
+=item B<evp_key>
+
+=item B<key_to_public_PEM>
+
+=item B<private_pem_DER_to_tree>
+
+=item B<read_ECDSA_signature_file>
+
+=item B<read_PEM_entries>
+
+=item B<standard_curve_to_ANS1>
+
+=item B<write_ECDSA_signature_file>
+
+=back
 
 =head1 AUTHOR 
 

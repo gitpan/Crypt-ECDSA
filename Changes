@@ -47,3 +47,7 @@ Revision history for Perl module Crypt::ECDSA
     - added more XS routines
     - removed an undocumented dependency
 
+0.063 Fri 18 April 2008
+    - added more binary field XS routines
+    - test suite update
+    - pod update

@@ -1,4 +1,4 @@
-use Test::More tests => 145;
+use Test::More tests => 50;
 
 use strict;
 no warnings;
@@ -8,7 +8,7 @@ use Crypt::ECDSA::Util qw( bint hex_bint bigint_from_coeff );
 use Crypt::ECDSA qw( multiply_F2m );
 
 # check all points
-our $WARN_IF_NEW_POINT_INVALID = 1;
+#our $WARN_IF_NEW_POINT_INVALID = 1;
 
 use_ok('Crypt::ECDSA::Curve::Koblitz');
 
@@ -106,11 +106,46 @@ ok( $irr == $pG->{curve}->{irreducible},
     "Check polynomial basis for K-233" );
 
 # scalar multiplication
-for my $k ( 1262 .. 1381 ) {
-    my $Q = $pG1 * $k;
-    ok( $Q->is_on_curve, "Point Q = $k" . "G is on curve" );
+for my $k ( 1262 .. 1282 ) {
+    my $Q = $pG * $k;
+    ok( $Q->is_on_curve, "Point Q = $k" . " * pG1 is on curve" );
 }
 
+# check specific values for on-curve status
+
+my $ecdsa = Crypt::ECDSA->new( standard => 'EC2N-233' );
+my @false_k233_points = (
+    { 
+        Qx => bint('0x534537f7762394d8ff46675d194aa212c4f9a2b5705f68df74e4e35d59'),
+        Qy => bint('0x1b4bb8fa0cd97777f60f4d7e4038cd65527eff4570b09204fdbedabc7d2'),
+    },
+    {
+        Qx => bint('0x13ca0f0875f8fea41a1f44aa7603a85324507c7177b616627459feabd3b'),
+        Qy => bint('0x61fc08300b6cf0c99c5f923ccc65f9be1fd9449b0625ed6a7f767e6a4d'),
+    },
+);
+my @true_k233_points = (
+    {
+        Qx => bint('0x148dec1cffafce7ce21ae80652935bbb8b960bb1c4f27830d7ac0a786a5'),
+        Qy => bint('0xc845acaaccc4549b8e2323a7f7ec17e0c8ae7a574c8e6a1ce337939c7b'),
+    },
+    {
+        Qx => bint('0x79a6cbfe3a2e9e9eaef2b119787682ad51b7e1003e0bd952417f651d65'),
+        Qy => bint('0x990e7736bed24326c49a683587e72b24d8e5b62c037495a99f21438bac'),
+    },
+);
+
+foreach my $invalid_point (@false_k233_points) {
+    my $qx = $invalid_point->{Qx};
+    my $qy = $invalid_point->{Qy};
+    ok( $ecdsa->is_valid_point( $qx, $qy ) == 0, "point on curve is not valid" );
+}
+
+foreach my $valid_point (@true_k233_points) {
+    my $qx = $valid_point->{Qx};
+    my $qy = $valid_point->{Qy};
+    ok( $ecdsa->is_valid_point( $qx, $qy ) != 0, "point on curve is valid" );
+}
 
 # NIST K-283
 

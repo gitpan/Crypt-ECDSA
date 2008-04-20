@@ -8,6 +8,7 @@ WriteMakefile(
     VERSION_FROM => 'lib/Crypt/ECDSA.pm', # finds $VERSION
     AUTHOR       => 'William Hererra (whererra@skylightview.com)',
     ABSTRACT     => 'Digital Signature using Elliptic Curve Cryptography',
+    LICENSE      => 'perl',
     PREREQ_PM    => { 
         Carp => 0, Digest::SHA => 0, Data::Compare => 0, 
         Text::Wrap => 0, Encoding::BER => 0, MIME::Base64 => 0, 

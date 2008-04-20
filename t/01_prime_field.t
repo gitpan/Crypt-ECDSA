@@ -1,4 +1,4 @@
-use Test::More tests => 157;
+use Test::More tests => 560;
 
 use strict;
 no warnings;
@@ -15,7 +15,7 @@ use_ok( 'Crypt::ECDSA::ECDSAVS' );
 use_ok( 'Crypt::ECDSA::PEM' );
 
 # check all points
-our $WARN_IF_NEW_POINT_INVALID = 1;
+#our $WARN_IF_NEW_POINT_INVALID = 1;
 
 # Test Crypt::ECDSA::Curve and Crypt::ECDSA::Point routines
 
@@ -73,7 +73,7 @@ ok( $p6 * 0 == $p7, "multiply by 0" );
 
 my $sum = $p6->curve->infinity;
 $sum->order(7);
-for my $i ( 0 .. 122 ) {
+for my $i ( 0 .. 521 ) {
     ok( $p6 * $i == $sum, 
       "multiply [p6(13, 7) mod 23] by $i to get $sum->{X}, $sum->{Y}" );
     $sum += $p6;
@@ -153,6 +153,43 @@ $pG  = Crypt::ECDSA::Point->new(
 );
 $p_prod = $pG * $cur->{r};
 ok( $p_prod->is_point_at_infinity, "point G times r is infinity for P-192" );
+
+# check specific values for on-curve status
+
+my $ecdsa = Crypt::ECDSA->new( standard => 'ECP-192' );
+my @false_p192_points = (
+    { 
+        Qx => bint('0xcd6d0f029a023e9aaca429615b8f577abee685d8257cc83a'),
+        Qy => bint('0x19c410987680e9fb6c0b6ecc01d9a2647c8bae27721bacdfc'),
+
+    },
+    {
+        Qx => bint('0x17f2fce203639e9eaf9fb50b81fc32776b30e3b02af16c73b'),
+        Qy => bint('0x95da95c5e72dd48e229d4748d4eee658a9a54111b23b2adb'),
+    },
+);
+my @true_p192_points = (
+    {
+        Qx => bint('0xc58d61f88d905293bcd4cd0080bcb1b7f811f2ffa41979f6'),
+        Qy => bint('0x8804dc7a7c4c7f8b5d437f5156f3312ca7d6de8a0e11867f'),
+    },
+    {
+        Qx => bint('0xcdf56c1aa3d8afc53c521adf3ffb96734a6a630a4a5b5a70'),
+        Qy => bint('0x97c1c44a5fb229007b5ec5d25f7413d170068ffd023caa4e'),
+    },
+);
+
+foreach my $invalid_point (@false_p192_points) {
+    my $qx = $invalid_point->{Qx};
+    my $qy = $invalid_point->{Qy};
+    ok( $ecdsa->is_valid_point( $qx, $qy ) == 0, "point on curve is not valid" );
+}
+
+foreach my $valid_point (@true_p192_points) {
+    my $qx = $valid_point->{Qx};
+    my $qy = $valid_point->{Qy};
+    ok( $ecdsa->is_valid_point( $qx, $qy ) != 0, "point on curve is valid" );
+}
 
 
 # NIST P-224

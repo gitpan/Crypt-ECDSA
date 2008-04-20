@@ -1,8 +1,8 @@
 --- #YAML:1.0
 name:                Crypt-ECDSA
-version:             0.062
+version:             0.063
 abstract:            Digital Signature using Elliptic Curve Cryptography
-license:             ~
+license:             perl
 author:              
     - William Hererra (whererra@skylightview.com)
 generated_by:        ExtUtils::MakeMaker version 6.42_01

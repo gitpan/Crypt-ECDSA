@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = '0.060';
+our $VERSION = '0.063';
 
 use strict;
 no warnings;
@@ -285,6 +285,16 @@ sub new_key_values {
   
   Write the key to a PEM file.  Private key is written if the 'private' 
   argument is nonzero.
+
+=back
+
+=head2 Class Internal Functions
+
+=over 4
+
+=item B<G>
+
+=item B<new_secret_value>
 
 =back
 

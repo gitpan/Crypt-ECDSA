@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Point;
 
-our $VERSION = '0.060';
+our $VERSION = '0.063';
 
 use strict;
 use warnings;
@@ -237,6 +237,22 @@ These are for use with Crypt::ECDSA, a cryptography module.
 
   Overloaded to '=='
   Returns 1 if the points are equal (on the same curve as well).
+
+=back
+
+=head2 Class Internal Functions
+
+=over 4
+
+=item B<curve>
+
+=item B<from_octet>
+
+=item B<inverse>
+
+=item B<is_on_curve>
+
+=item B<to_octet>
 
 =back
 

@@ -6,7 +6,7 @@ require 5.008;
 use_ok( 'Crypt::ECDSA::Util' );
 
 # check all points
-our $WARN_IF_NEW_POINT_INVALID = 1;
+#our $WARN_IF_NEW_POINT_INVALID = 1;
 
 # First, some ECDSA FIPS 186-3 stuff from Crypt::ECDSA::Util
 

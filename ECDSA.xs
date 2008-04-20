@@ -10,6 +10,7 @@
 /*
 Crypt::ECDSA.xs, prime and finite binary field math routines for better speed
 This code copyright (C) William Hererra, 2007, 2008, under terms of Perl itself
+This version date:  19 April 2008
 */
 
 
@@ -25,93 +26,6 @@ typedef struct {
 START_MY_CXT
 
 /* end random static function initialization */
-
-
-
-SV * multiply_F2m( SV * x_in, SV * y_in, SV * mod_in ) {
-    mpz_t * mpz_t_obj;
-    SV * obj_ref, * obj;
-
-    long i, r;
-    mpz_t *x = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
-    mpz_t *y = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
-    mpz_t *mod = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
-    mpz_t product, accum, yval;
-    
-    mpz_init( accum );
-    mpz_init_set( yval, *y );
-    r = mpz_sizeinbase( *x, 2 );
-    for( i = 0; i < r; ++i ) {
-        if( mpz_tstbit( *x, i ) ) {
-            mpz_xor( accum, accum, yval );
-        }
-        mpz_mul_2exp( yval, yval, 1 );
-    }
-    mpz_init_set( product, accum );
-    while( 1 ) {
-        r = mpz_sizeinbase( product, 2 ) - mpz_sizeinbase( *mod, 2 );
-        if( r < 0 ) {
-            break;
-        }
-        mpz_mul_2exp( accum, *mod, r );
-        mpz_xor( product, product, accum );
-    }
-
-    New(1, mpz_t_obj, 1, mpz_t);
-    if(mpz_t_obj == NULL) croak("Failed to allocate memory in multiply_F2m function");
-    obj_ref = newSViv(0);
-    obj = newSVrv(obj_ref, "Math::BigInt::GMP");
-    mpz_init_set(*mpz_t_obj, product);
-
-    sv_setiv(obj, INT2PTR(IV, mpz_t_obj));
-    SvREADONLY_on(obj);
-    return obj_ref;
-}
-
-
-SV * invert_F2m( SV * x_in, SV * mod_in ) {
-    mpz_t * mpz_t_obj;
-    mpz_t b, c, u, v, temp, vj, cj;
-    SV * obj_ref, * obj;
-    long j, k;
-    mpz_t * x   = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
-    mpz_t * mod = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
-    
-    mpz_init_set_si( b, 1 );
-    mpz_init( c );
-    mpz_init_set( u, *x );
-    mpz_init_set( v, *mod );
-    mpz_init( temp );
-    mpz_init( vj );
-    mpz_init( cj );
-    while( ( k = mpz_sizeinbase( u, 2 ) ) > 1 ) {
-        j = k - mpz_sizeinbase( v, 2 );
-        if( j < 0 ) {
-            mpz_set( temp, u );
-            mpz_set( u, v );
-            mpz_set( v, temp );
-            mpz_set( temp, c );
-            mpz_set( c, b );
-            mpz_set( b, temp );
-            j = -j;
-        }
-        mpz_mul_2exp( vj, v, j );
-        mpz_xor( u, u, vj );
-        mpz_mul_2exp( cj, c, j );
-        mpz_xor( b, b, cj );
-    }
-    New( 1, mpz_t_obj, 1, mpz_t );
-    if(mpz_t_obj == NULL) 
-        croak("Failed to allocate memory in invert_F2m function");
-    obj_ref = newSViv(0);
-    obj = newSVrv( obj_ref, "Math::BigInt::GMP" );
-    mpz_init_set( *mpz_t_obj, b );
-
-    sv_setiv( obj, INT2PTR(IV, mpz_t_obj) );
-    SvREADONLY_on(obj);
-    return obj_ref;
-}
-
 
 int gmp_is_probably_prime( SV * num, SV * reps_to_run ) {
     mpz_t * mpzp_n    = INT2PTR( mpz_t *, SvIV(SvRV(num)) );
@@ -140,6 +54,313 @@ SV * gmp_random_bits( SV * num_bits ) {
     sv_setiv(obj, INT2PTR(IV, mpz_t_obj));
     SvREADONLY_on(obj);
     return obj_ref;
+}
+
+
+void mul_F2m( mpz_t result, mpz_t x, mpz_t y, mpz_t mod ) {
+    long i, r;
+    mpz_t product, accum, yval;
+    
+    mpz_init(accum);
+    mpz_init_set( yval, y );
+    r = mpz_sizeinbase( x, 2 );
+    
+    for( i = 0; i < r; ++i ) {
+        if( mpz_tstbit( x, i ) ) {
+            mpz_xor( accum, accum, yval );
+        }
+        mpz_mul_2exp( yval, yval, 1 );
+    }
+    
+    mpz_init_set( product, accum );
+    
+    while( 1 ) {
+        r = mpz_sizeinbase( product, 2 ) - mpz_sizeinbase( mod, 2 );
+        if( r < 0 ) {
+            break;
+        }
+        mpz_mul_2exp( accum, mod, r );
+        mpz_xor( product, product, accum );
+    }
+    
+    mpz_set( result, product );
+}
+
+
+void multiply_F2m( SV * product_out, SV * x_in, SV * y_in, SV * mod_in ) {
+    mpz_t *x    = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
+    mpz_t *y    = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
+    mpz_t *mod  = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t *prod = INT2PTR( mpz_t *, SvIV(SvRV(product_out)) );
+    
+    mul_F2m( prod, *x, *y, *mod );
+}
+
+void inv_F2m( mpz_t result, mpz_t x, mpz_t mod ) {
+    mpz_t b, c, u, v, temp, vj, cj;
+    long j, k;
+    
+    mpz_init_set_si( b, 1 );
+    mpz_init( c );
+    mpz_init_set( u, x );
+    mpz_init_set( v, mod );
+    mpz_init( temp );
+    mpz_init( vj );
+    mpz_init( cj );
+    while( ( k = mpz_sizeinbase( u, 2 ) ) > 1 ) {
+        j = k - mpz_sizeinbase( v, 2 );
+        if( j < 0 ) {
+            mpz_set( temp, u );
+            mpz_set( u, v );
+            mpz_set( v, temp );
+            mpz_set( temp, c );
+            mpz_set( c, b );
+            mpz_set( b, temp );
+            j = -j;
+        }
+        mpz_mul_2exp( vj, v, j );
+        mpz_xor( u, u, vj );
+        mpz_mul_2exp( cj, c, j );
+        mpz_xor( b, b, cj );
+    }
+    mpz_set( result, b );
+}
+
+void invert_F2m( SV * quotient_out, SV * x_in, SV * mod_in ) {
+    mpz_t *  x   = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
+    mpz_t *  mod = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t * quot = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+
+    inv_F2m( quot, *x, *mod );
+}
+
+int is_F2m_point_on_curve( SV * x_in, SV * y_in, SV * mod_in, SV * a_in, SV * a_neg) {
+    mpz_t *x      = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
+    mpz_t *y      = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
+    mpz_t *mod    = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t *a      = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
+    int neg_a     = SvIV(a_neg);
+
+    mpz_t lhs, rhs, temp, xsq;
+    mpz_init(lhs);
+    mpz_init(rhs);
+    mpz_init(xsq);
+    mpz_init(temp);
+    if(neg_a)
+        mpz_neg( *a, *a );
+
+    mul_F2m( lhs, *y, *y, *mod );
+    mul_F2m( temp, *y, *x, *mod );
+    mpz_xor( lhs, lhs, temp );
+    mul_F2m( xsq, *x, *x, *mod );
+    mul_F2m( rhs, xsq, *x, *mod );
+    if( mpz_sgn(*a) != 0 )
+        mpz_xor( rhs, rhs, xsq );
+    mpz_set_ui( temp, 1 );
+    mpz_xor( rhs, rhs, temp );
+    if( mpz_cmp( lhs, rhs ) == 0 ) 
+        return 1; 
+    else 
+        return 0;
+}
+
+void double_F2m_pt(mpz_t x_result, mpz_t y_result, 
+                   mpz_t x, mpz_t y, mpz_t mod, mpz_t a ) {
+    mpz_t s, temp;
+    mpz_init(temp);
+    mpz_init_set( s, x );
+                       
+    if( mpz_sgn(x) == 0 ) {
+        mpz_set_ui( x_result, 0 );
+        mpz_set_ui( y_result, 0 );
+    }
+    else {
+        inv_F2m( s, s, mod );
+        mul_F2m( s, y, s, mod );
+        mpz_xor( s, s, x );
+        mul_F2m( x_result, s, s, mod );
+        mpz_xor( x_result, x_result, s );
+        if( mpz_sgn(a) != 0 ) 
+            mpz_xor( x_result, x_result, a );
+            
+        mpz_xor( temp, x, x_result );
+        mul_F2m( y_result, s, temp, mod );
+        mpz_xor( y_result, y_result, x_result );
+        mpz_xor( y_result, y_result, y );
+    }
+}
+
+void double_F2m_point( SV *x_in, SV *y_in, SV *mod_in, SV *a_in, SV * a_neg ) {
+    mpz_t *x      = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
+    mpz_t *y      = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
+    mpz_t *mod    = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t *a      = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
+    int neg_a     = SvIV(a_neg);
+    
+    mpz_t old_x, old_y;
+
+    mpz_init_set( old_x, *x );
+    mpz_init_set( old_y, *y );
+
+    if(neg_a) 
+        mpz_neg( *a, *a );
+    
+    /* MODIFIES (x, y) IN PLACE */
+    double_F2m_pt( *x, *y, old_x, old_y, *mod, *a );
+}
+
+void add_F2m_pt( mpz_t x_sum, mpz_t y_sum, mpz_t x1, mpz_t y1, 
+                 mpz_t x2, mpz_t y2, mpz_t mod, mpz_t a ) {
+    mpz_t s, temp1, temp2;
+
+    if( mpz_cmp( x1, x2 ) == 0 && mpz_cmp( y1, y2 ) == 0 )
+        double_F2m_pt(x_sum, y_sum, x1, y1, mod, a );
+    else if( mpz_cmp( x1, x2 ) == 0 && 
+        ( mpz_sgn(x1) == 0 || mpz_cmp( y1, y2 ) != 0 ) ) {
+        mpz_set_ui( x_sum, 0 );
+        mpz_set_ui( y_sum, 0 );
+    }
+    else if( mpz_sgn(x1) == 0 && mpz_sgn(y1) == 0 ) {
+        mpz_set( x_sum, x2 );
+        mpz_set( y_sum, y2 );        
+    }
+    else if( mpz_sgn(x2) == 0 && mpz_sgn(y2) == 0 ) {
+        mpz_set( x_sum, x1 );
+        mpz_set( y_sum, y1 );        
+    }
+    else {
+        mpz_init(s);
+        mpz_init(temp1);
+        mpz_init(temp2);
+        mpz_xor( temp1, x1, x2 );
+        inv_F2m( temp1, temp1, mod );
+        mpz_xor( temp2, y1, y2 );
+        mul_F2m( s, temp2, temp1, mod );
+        mul_F2m( x_sum, s, s, mod );
+        if( mpz_sgn(a) != 0 ) 
+            mpz_xor( x_sum, x_sum, a );
+        mpz_xor( x_sum, x_sum, s );
+        mpz_xor( x_sum, x_sum, x1 );
+        mpz_xor( x_sum, x_sum, x2 );
+    
+        mpz_xor( temp1, x2, x_sum );
+        mul_F2m( y_sum, s, temp1, mod );
+        mpz_xor( y_sum, y_sum, x_sum );
+        mpz_xor( y_sum, y_sum, y2 );
+    }
+}
+
+void add_F2m_point( SV *x1_in, SV *y1_in, SV *x2_in, SV *y2_in, 
+                   SV *mod_in, SV *a_in, SV * a_neg ) {
+    mpz_t *x1      = INT2PTR( mpz_t *, SvIV(SvRV(x1_in)) );
+    mpz_t *y1      = INT2PTR( mpz_t *, SvIV(SvRV(y1_in)) );
+    mpz_t *x2      = INT2PTR( mpz_t *, SvIV(SvRV(x2_in)) );
+    mpz_t *y2      = INT2PTR( mpz_t *, SvIV(SvRV(y2_in)) );
+    mpz_t *mod     = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t *a       = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
+    int neg_a      = SvIV(a_neg);
+     
+    mpz_t old_x1, old_y1;
+    mpz_init_set( old_x1, *x1 );
+    mpz_init_set( old_y1, *y1 );
+                       
+    if(neg_a) 
+        mpz_neg( *a, *a );
+    
+    /* MODIFIES (x1, y1) IN PLACE */
+    add_F2m_pt( *x1, *y1, old_x1, old_y1, *x2, *y2, *mod, *a );
+}
+
+
+void multiply_F2m_pt( mpz_t x_prod, mpz_t y_prod, mpz_t x, mpz_t y, 
+                 mpz_t scalar, mpz_t mod, mpz_t a ) {
+    unsigned long i;
+    mpz_t qx, qy, sx, sy, temp_x, temp_y;
+    mpz_init_set_ui( sx, 0 );
+    mpz_init_set_ui( sy, 0 );
+    mpz_init(temp_x);
+    mpz_init(temp_y);
+    mpz_init_set( qx, x );
+    mpz_init_set( qy, y );
+    if( mpz_sgn(scalar) < 0 ) {
+        mpz_neg( scalar, scalar );
+        mpz_xor( qy, y, x );
+    }
+    for( i = mpz_sizeinbase( scalar, 2 ); i > 0; --i ) {
+/*{
+    char buf1[100], buf2[100];
+    printf(" XS: i is %d, S is ( %s, %s )\n", i, mpz_get_str(buf1, 10, sx ), mpz_get_str(buf2, 10, sy ) ); 
+}*/
+        double_F2m_pt( temp_x, temp_y, sx, sy, mod, a );
+        mpz_set( sx, temp_x );
+        mpz_set( sy, temp_y );
+        if( mpz_tstbit( scalar, i - 1 ) == 1 )  {
+            add_F2m_pt( temp_x, temp_y, sx, sy, qx, qy, mod, a );
+            mpz_set( sx, temp_x );
+            mpz_set( sy, temp_y );
+        }
+    }
+    mpz_set( x_prod, sx );
+    mpz_set( y_prod, sy );
+}
+
+void multiply_F2m_point( SV * x_in, SV * y_in, SV * scalar_in, SV * mod_in, 
+                         SV * a_in, SV * a_neg, SV * scalar_neg ) {
+    mpz_t *x          = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
+    mpz_t *y          = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
+    mpz_t *scalar     = INT2PTR( mpz_t *, SvIV(SvRV(scalar_in)) );
+    mpz_t *mod        = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t *a          = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
+    int neg_a         = SvIV(a_neg);
+    int neg_scalar    = SvIV(scalar_neg);
+    
+    mpz_t old_x, old_y;
+    
+    mpz_init_set( old_x, *x );
+    mpz_init_set( old_y, *y );
+    if(neg_a) 
+        mpz_neg( *a, *a );
+    if(neg_scalar) 
+        mpz_neg( *scalar, *scalar );
+    
+    /* MODIFIES (x,y) IN PLACE */
+    multiply_F2m_pt( *x, *y, old_x, old_y, *scalar, *mod, *a );
+}
+
+int is_Fp_point_on_curve( SV * x_in, SV * y_in, SV * mod_in, SV * a_in, SV * a_neg, SV * b_in, SV * b_neg ) {
+    mpz_t *x      = INT2PTR( mpz_t *, SvIV(SvRV(x_in)) );
+    mpz_t *y      = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
+    mpz_t *mod    = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
+    mpz_t *a      = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
+    int neg_a     = SvIV(a_neg);
+    mpz_t *b      = INT2PTR( mpz_t *, SvIV(SvRV(b_in)) );
+    int neg_b     = SvIV(b_neg);
+    mpz_t temp, ysq, xcub;
+    
+    if(mpz_sgn(*x) == 0 && mpz_sgn(*y) == 0 ) 
+        return 0;
+    else {
+        if(neg_a)        
+            mpz_neg( *a, *a );
+        if(neg_b)        
+            mpz_neg( *b, *b );
+            
+        mpz_init_set( ysq, *y );
+        mpz_mul( ysq, ysq, *y );
+        
+        mpz_init_set( xcub, *x );
+        mpz_mul( xcub, xcub, *x );        
+        mpz_mul( xcub, xcub, *x );
+        
+        mpz_init_set( temp, *x );
+        mpz_mul( temp, temp, *a );
+        mpz_add( xcub, xcub, temp );
+        mpz_add( xcub, xcub, *b );
+        mpz_sub( temp, ysq, xcub );
+        
+        mpz_mod( temp, temp, *mod );
+        return ( mpz_sgn(temp) == 0 ) ? 1 : 0;
+    }
 }
 
 void double_Fp_pt( mpz_t x_result, mpz_t y_result, 
@@ -177,14 +398,15 @@ void double_Fp_point( SV *x_in, SV *y_in, SV *mod_in, SV *a_in, SV * a_neg ) {
     mpz_t *y      = INT2PTR( mpz_t *, SvIV(SvRV(y_in)) );
     mpz_t *mod    = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
     mpz_t *a      = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
-    mpz_t *neg_a  = INT2PTR( mpz_t *, SvIV(SvRV(a_neg)) );
+    int neg_a     = SvIV(a_neg);
     
     mpz_t old_x, old_y;
 
     mpz_init_set( old_x, *x );
     mpz_init_set( old_y, *y );
 
-    if( mpz_sgn(*neg_a) ) mpz_neg( *a, *a );
+    if(neg_a)
+        mpz_neg( *a, *a );
     
     /* MODIFIES (x, y) IN PLACE */
     double_Fp_pt( *x, *y, old_x, old_y, *mod, *a );
@@ -199,7 +421,15 @@ void add_Fp_pt( mpz_t x_result, mpz_t y_result, mpz_t x1, mpz_t y1,
     mpz_sub( dy2y1, dy2y1, y1 );
     mpz_init_set( dx2x1, x2 );
     mpz_sub( dx2x1, dx2x1, x1 );
-    if( mpz_cmp( x1, x2 ) == 0 ) {
+    if( mpz_sgn(x1) == 0 && mpz_sgn(y1) == 0 ) {
+        mpz_set( x_result, x2 );
+        mpz_set( y_result, y2 );        
+    }
+    else if( mpz_sgn(x2) == 0 && mpz_sgn(y2) == 0 ) {
+        mpz_set( x_result, x1 );
+        mpz_set( y_result, y1 );        
+    }
+    else if( mpz_cmp( x1, x2 ) == 0 ) {
         mpz_add( temp, y1, y2 );
         mpz_mod( temp, temp, mod );
         if( mpz_sgn(temp) == 0 ) {
@@ -232,21 +462,22 @@ void add_Fp_pt( mpz_t x_result, mpz_t y_result, mpz_t x1, mpz_t y1,
 }
 
 void add_Fp_point( SV *x1_in, SV *y1_in, SV *x2_in, SV *y2_in, 
-                   SV *mod_in, SV *a_in, SV * a_neg ) {
+                   SV *mod_in, SV *a_in, SV *a_neg ) {
     mpz_t *x1      = INT2PTR( mpz_t *, SvIV(SvRV(x1_in)) );
     mpz_t *y1      = INT2PTR( mpz_t *, SvIV(SvRV(y1_in)) );
     mpz_t *x2      = INT2PTR( mpz_t *, SvIV(SvRV(x2_in)) );
     mpz_t *y2      = INT2PTR( mpz_t *, SvIV(SvRV(y2_in)) );
     mpz_t *mod     = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
     mpz_t *a       = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
-    mpz_t *neg_a  = INT2PTR( mpz_t *, SvIV(SvRV(a_neg)) );
+    int neg_a      = SvIV(a_neg);
      
     mpz_t old_x1, old_y1;
     
     mpz_init_set( old_x1, *x1 );
     mpz_init_set( old_y1, *y1 );
     
-    if( mpz_sgn(*neg_a) ) mpz_neg( *a, *a );
+    if(neg_a) 
+        mpz_neg( *a, *a );
     
     /* MODIFIES (x1, y1) IN PLACE */
     add_Fp_pt( *x1, *y1, old_x1, old_y1, *x2, *y2, *mod, *a );
@@ -304,14 +535,15 @@ void multiply_Fp_point( SV * x_in, SV * y_in, SV * scalar_in,
     mpz_t *scalar = INT2PTR( mpz_t *, SvIV(SvRV(scalar_in)) );
     mpz_t *mod    = INT2PTR( mpz_t *, SvIV(SvRV(mod_in)) );
     mpz_t *a      = INT2PTR( mpz_t *, SvIV(SvRV(a_in)) );
-    mpz_t *neg_a  = INT2PTR( mpz_t *, SvIV(SvRV(a_neg)) );
+    int neg_a     = SvIV(a_neg);
     
     mpz_t old_x, old_y;
     
     mpz_init_set( old_x, *x );
     mpz_init_set( old_y, *y );
     
-    if( mpz_sgn(*neg_a) ) mpz_neg( *a, *a );
+    if(neg_a) 
+        mpz_neg( *a, *a );
     
     /* MODIFIES (x,y) IN PLACE */
     multiply_Fp_pt( *x, *y, old_x, old_y, *scalar, *mod, *a );
@@ -329,15 +561,17 @@ BOOT:
 }
 
 
-SV *
-multiply_F2m ( x_in, y_in, mod_in )
+void
+multiply_F2m ( product_out, x_in, y_in, mod_in )
+	SV *	product_out
 	SV *	x_in
 	SV *	y_in
 	SV *	mod_in
 
 
-SV *
-invert_F2m ( x_in, mod_in )
+void
+invert_F2m ( quotient_out, x_in, mod_in )
+	SV *	quotient_out
 	SV *	x_in
 	SV *	mod_in
 
@@ -351,7 +585,57 @@ SV *
 gmp_random_bits ( bits )
 	SV *	bits
 
-void double_Fp_point( x_in, y_in, mod_in, a_in, a_neg )
+int
+is_F2m_point_on_curve( x_in, y_in, mod_in, a_in, a_neg ) 
+	SV *	x_in
+	SV *	y_in
+	SV *	mod_in
+	SV *	a_in
+	SV *	a_neg
+    
+    
+void 
+double_F2m_point( x_in, y_in, mod_in, a_in, a_neg )
+	SV *	x_in
+	SV *	y_in
+	SV *	mod_in
+	SV *	a_in
+	SV *	a_neg
+    
+
+void 
+add_F2m_point( x1_in, y1_in, x2_in, y2_in, mod_in, a_in, a_neg )
+	SV *	x1_in
+	SV *	y1_in
+	SV *	x2_in
+	SV *	y2_in
+	SV *	mod_in
+	SV *	a_in
+	SV *	a_neg
+
+void 
+multiply_F2m_point( x_in, y_in, scalar_in, mod_in, a_in, a_neg, scalar_neg )
+	SV *	x_in
+	SV *	y_in
+	SV *	scalar_in
+	SV *	mod_in
+	SV *	a_in
+	SV *	a_neg
+	SV *	scalar_neg
+
+int 
+is_Fp_point_on_curve( x_in, y_in, mod_in, a_in, a_neg, b_in, b_neg )
+	SV *	x_in
+	SV *	y_in
+	SV *	mod_in
+	SV *	a_in
+	SV *	a_neg
+	SV *	b_in
+	SV *	b_neg
+
+
+void 
+double_Fp_point( x_in, y_in, mod_in, a_in, a_neg )
 	SV *	x_in
 	SV *	y_in
 	SV *	mod_in
@@ -360,7 +644,8 @@ void double_Fp_point( x_in, y_in, mod_in, a_in, a_neg )
     
 
 
-void add_Fp_point( x1_in, y1_in, x2_in, y2_in, mod_in, a_in, a_neg )
+void 
+add_Fp_point( x1_in, y1_in, x2_in, y2_in, mod_in, a_in, a_neg )
 	SV *	x1_in
 	SV *	y1_in
 	SV *	x2_in

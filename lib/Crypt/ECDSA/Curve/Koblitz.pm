@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.062';
+our $VERSION = '0.063';
 
 use base Crypt::ECDSA::Curve;
 
@@ -32,8 +32,8 @@ sub multiply_koblitz {
     $y = bint($y) unless ref $y;
     my $mod = bint( $self->{irreducible} );
     my $retval = bint(1);
-    $retval->{value} = 
-      Crypt::ECDSA::multiply_F2m( $x->{value}, $y->{value}, $mod->{value} );
+    Crypt::ECDSA::multiply_F2m( 
+      $retval->{value}, $x->{value}, $y->{value}, $mod->{value} );
     return $retval;
 }
 
@@ -42,20 +42,42 @@ sub invert_koblitz {
     $x = bint($x) unless ref $x;
     my $mod = bint( $self->{irreducible} );
     my $retval = bint(1);
-    $retval->{value} = Crypt::ECDSA::invert_F2m( $x->{value}, $mod->{value} );
+    Crypt::ECDSA::invert_F2m( $retval->{value}, $x->{value}, $mod->{value} );
     return $retval;
 }
 
 sub is_on_curve {
     my ( $self, $x, $y ) = @_;
-    my $lhs = $self->multiply_koblitz( $y, $y );
-    $lhs ^= $self->multiply_koblitz( $y, $x );
-    my $xsq = $self->multiply_koblitz( $x,   $x );
-    my $rhs = $self->multiply_koblitz( $xsq, $x );
-    $rhs ^= $xsq if $self->{a};
-    $rhs ^= 1;
-    return 1 if $lhs == $rhs;
-    return;
+    my $mod = bint( $self->{irreducible} );
+    my $a = bint( $self->{a} );
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
+    return Crypt::ECDSA::is_F2m_point_on_curve( 
+      $x->{value}, $y->{value}, $mod->{value}, $a->{value}, $a_neg ); 
+}
+
+sub double_on_curve {
+    my ( $self, $x, $y, $order ) = @_;
+    return $self->infinity if $x == 0;
+    
+    my $x_sum = bint($x);
+    my $y_sum = bint($y);
+    my $mod = bint( $self->{irreducible} ); 
+    my $a = bint( $self->{a} );
+    
+    # we cannot pass the sign easily to XS so $a_neg passes the sign of a
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
+
+    Crypt::ECDSA::double_F2m_point( 
+      $x_sum->{value}, $y_sum->{value},
+      $mod->{value}, $a->{value}, $a_neg
+    );
+    return $self->infinity if $x_sum == 0 and $y_sum == 0;    
+    return Crypt::ECDSA::Point->new(
+        X     => $x_sum,
+        Y     => $y_sum,
+        order => $order,
+        curve => $self
+    );
 }
 
 sub add_on_curve {
@@ -63,24 +85,23 @@ sub add_on_curve {
     return $self->double_on_curve( $x1, $y1, $order )
       if $x1 == $x2 and $y1 == $y2;
     return $self->infinity if $x1 == $x2 and ( $x1 == 0 or $y1 != $y2 );
+
     $x1 = bint($x1) unless ref $x1;
     $y1 = bint($y1) unless ref $y1;
-    $y2 = bint($x2) unless ref $x2;
+    $x2 = bint($x2) unless ref $x2;
     $y2 = bint($y2) unless ref $y2;
 
-    my $s =
-      $self->multiply_koblitz( $y1 ^ $y2, $self->invert_koblitz( $x1 ^ $x2 ) );
+    my $x_sum = bint($x1);
+    my $y_sum = bint($y1);
+    my $mod = bint( $self->{irreducible} );    
+    my $a = bint( $self->{a} );
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
 
-    my $x_sum = $self->multiply_koblitz( $s, $s );
-    $x_sum ^= $self->{a} if $self->{a};
-    $x_sum ^= $s;
-    $x_sum ^= $x1;
-    $x_sum ^= $x2;
-
-    my $y_sum = $self->multiply_koblitz( $s, $x2 ^ $x_sum );
-    $y_sum ^= $x_sum;
-    $y_sum ^= $y2;
-
+    Crypt::ECDSA::add_F2m_point( 
+      $x_sum->{value}, $y_sum->{value},$x2->{value}, $y2->{value},
+      $mod->{value}, $a->{value}, $a_neg
+    );
+    return $self->infinity if $x_sum == 0 and $y_sum == 0;
     return Crypt::ECDSA::Point->new(
         X     => $x_sum,
         Y     => $y_sum,
@@ -90,30 +111,6 @@ sub add_on_curve {
 }
 
 sub subtract_on_curve { add_on_curve(@_) }
-
-sub double_on_curve {
-    my ( $self, $x, $y, $order ) = @_;
-    return $self->infinity if $x == 0;
-    my $mod = bint( $self->{irreducible} );
-
-    my $s = $self->multiply_koblitz( $y, $self->invert_koblitz($x) );
-    $s ^= $x;
-
-    my $x_sum = $self->multiply_koblitz( $s, $s );
-    $x_sum ^= $s;
-    $x_sum ^= $self->{a} if $self->{a};
-
-    my $y_sum = $self->multiply_koblitz( $s, $x ^ $x_sum );
-    $y_sum ^= $x_sum;
-    $y_sum ^= $y;
-
-    return Crypt::ECDSA::Point->new(
-        X     => $x_sum,
-        Y     => $y_sum,
-        order => $order,
-        curve => $self
-    );
-}
 
 sub inverse_on_curve {
     my ( $self, $x, $y, $order ) = @_;
@@ -127,32 +124,49 @@ sub inverse_on_curve {
 
 sub multiply_on_curve {
     my ( $self, $x, $y, $scalar, $order ) = @_;
+    
     $scalar = bint($scalar) unless ref $scalar;
     return $self->infinity unless $scalar;
 
-    my $Q = Crypt::ECDSA::Point->new(
-        X     => $x,
-        Y     => $y,
-        order => $order,
-        curve => $self
-    );
-    return $Q if $scalar == 1;
-    if ( $scalar < 0 ) {
-        $scalar = -$scalar;
-        $Q      = -Q;
+    my $x_product = bint($x);
+    my $y_product = bint($y);
+    my $mod = bint( $self->{irreducible} );    
+    my $a = bint( $self->{a} );
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
+    my $scalar_neg = ( $scalar < 0 ) ? 1 : 0;
+
+    if( $scalar == 1 ) {
+        return Crypt::ECDSA::Point->new(
+            X     => $x_product,
+            Y     => $y_product,
+            order => $order,
+            curve => $self
+        );
     }
-    my $S = Crypt::ECDSA::Point->new(
-        X     => 0,
-        Y     => 0,
-        order => $order,
-        curve => $self
-    );
-    for ( my $i = length( $scalar->as_bin ) - 3 ; $i >= 0 ; --$i ) {
-        $S += $S;
-        $S += $Q if $scalar & two_pow($i);
+    elsif( $scalar == -1 ) {
+        return Crypt::ECDSA::Point->new(
+            X     => $x_product,
+            Y     => $y_product ^ $x_product,
+            order => $order,
+            curve => $self
+        );
     }
-    return $S;
+    else {
+        Crypt::ECDSA::multiply_F2m_point(
+          $x_product->{value}, $y_product->{value}, $scalar->{value}, 
+          $mod->{value}, $a->{value}, $a_neg, $scalar_neg
+        );
+        return $self->infinity if $x_product == 0 and $y_product == 0;
+        return Crypt::ECDSA::Point->new(
+            X     => $x_product,
+            Y     => $y_product,
+            order => $order,
+            curve => $self
+        );
+    }
 }
+
+
 
 sub is_weak_curve {
     my ($self) = @_;
@@ -317,7 +331,7 @@ Crypt::ECDSA::Curve::Koblitz -- binary (F(2**N)) curves for EC cryptography
 
 =back
 
-=item FUNCTIONS
+=head2 FUNCTIONS
 
 =over 4
 
@@ -327,9 +341,15 @@ Crypt::ECDSA::Curve::Koblitz -- binary (F(2**N)) curves for EC cryptography
 
 =back
 
-=head1 BUGS
+=head2 Class Internal Functions
 
-  Windows compatibility needs work. Some of this is the GMP library.
+=over 4
+
+=item B<invert_koblitz>
+
+=item B<multiply_koblitz>
+
+=back
 
 =head1 AUTHOR 
 

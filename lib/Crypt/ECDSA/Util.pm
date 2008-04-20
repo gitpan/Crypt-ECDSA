@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = '0.062';
+our $VERSION = '0.063';
 
 use strict;
 use warnings;
@@ -246,6 +246,20 @@ my( $p, $q, $seed, $counter ) = make_seed_and_pq_with_sha1( 1024, 164 );
 
   Make primes p and q for use in DSA algorithms, given L and seed length.
   See FIPS 186-2, the CURRENT standard.  This is may be obsolete after 2008.
+
+=back
+
+=head2 Class Internal Functions
+
+=over 4
+
+=item B<hex_bint>
+
+=item B<random_bits>
+
+=item B<random_hex_bytes>
+
+=item B<validate_pq_seed_counter_sha1>
 
 =back
 

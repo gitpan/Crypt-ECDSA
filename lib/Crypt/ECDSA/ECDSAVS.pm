@@ -5,7 +5,7 @@ package Crypt::ECDSA::ECDSAVS;
 # customized for the current crypto FIPS verifier file formats, which are
 # a variant of the Windows style config file format.
 
-our $VERSION = '0.060';
+our $VERSION = '0.063';
 
 use strict;
 no warnings;
@@ -140,6 +140,7 @@ sub PubKey_test {
     }
     $self->{PubKey_results} = $retval;
     write_file( 'PubKey_response', $retval );
+print "response is $retval\n";
     return $retval;
 }
 

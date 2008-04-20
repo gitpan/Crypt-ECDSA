@@ -19,6 +19,8 @@ t/02_util.t
 t/03_binary_field.t
 t/04_ecdsa.t
 t/05_pem.t
+t/06_pod_test.t
+t/07_pod_coverage_test.t
 t/Gettysburg.jpg
 t/KeyPair.req
 t/KeyPair.rsp.correct

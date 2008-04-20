@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.060';
+our $VERSION = '0.063';
 
 use strict;
 use warnings;
@@ -496,6 +496,14 @@ Crypt::ECDSA::Curve -- Base class for ECC curves
   my $param = $curve->standard;
 
   Returns the 'standard' type of the curve, if defined for the instance.
+
+=back
+
+=head2 Class Internal Functions
+
+=over 4
+
+=item B<q>
 
 =back
 

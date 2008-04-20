@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.062';
+our $VERSION = '0.063';
 
 use strict;
 use warnings;
@@ -254,9 +254,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
   Make a text digest via the algorithm passed to new ( default is SHA-1 )
 
-
 =item B<signature>
-
 
     my ( $r, $s ) = $ecdsa->signature( message => $msg );
     
@@ -298,9 +296,44 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
 =back
 
+=head2 Class Internal Functions
+
+=over 4
+
+=item B<add_F2m_point>
+
+=item B<add_Fp_point>
+
+=item B<double_F2m_point>
+
+=item B<double_Fp_point>
+
+=item B<gmp_is_probably_prime>
+
+=item B<gmp_random_bits>
+
+=item B<invert_F2m>
+
+=item B<is_F2m_point_on_curve>
+
+=item B<is_Fp_point_on_curve>
+
+=item B<is_valid_point>
+
+=item B<multiply_F2m>
+
+=item B<multiply_F2m_point>
+
+=item B<multiply_Fp_point>
+
+=back
+
 =head1 NOTES
 
+=over 4
+
 =item B<See FIPS 186-3, draft standard>
+
   Note the use of SHA-1 hashing is becoming deprecated, but is still the default.
   SHA-256 hashing may be used instead of SHA-1 when practicable.
 
@@ -334,6 +367,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
    5. Calculate (x1,y1) = u1G + u2QA.
    6. The signature is valid if x1 = r(mod n), invalid otherwise.
 
+=back
 
 =head1 AUTHOR
 

@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Prime;
 
-our $VERSION = '0.062';
+our $VERSION = '0.063';
 
 use base Crypt::ECDSA::Curve;
 
@@ -16,11 +16,17 @@ sub equation { 'y * y = x * x * x + a * x + b, mod p, with a = -3' }
 
 sub is_on_curve {
     my ( $self, $x, $y ) = @_;
-    return if $x == 0 and $y == 0;
-    return 1
-      if ( $y * $y - ( $x * $x * $x + $self->{a} * $x + $self->{b} ) )
-      % $self->{p} == 0;
-    return;
+    $x = bint($x) unless ref $x;
+    $y = bint($y) unless ref $y;
+    my $mod = $self->{p};
+    $mod = bint($mod) unless ref $mod;
+    my $a = bint( $self->{a} );
+    my $a_neg = ( $a <  0 ) ? 1 : 0;
+    my $b = bint( $self->{b} );
+    my $b_neg = ( $b <  0 ) ? 1 : 0;
+     
+    return Crypt::ECDSA::is_Fp_point_on_curve( $x->{value}, $y->{value}, 
+      $mod->{value}, $a->{value}, $a_neg, $b->{value}, $b_neg );
 }
 
 sub double_on_curve {
@@ -30,13 +36,13 @@ sub double_on_curve {
     my $a = bint( $self->{a} );
     
     # we cannot pass the sign easily to XS so $a_neg passes the sign of a
-    my $a_neg = bint( ( $a < 0 ) ? 1 : 0 );
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
     my $x_sum = bint($x)->bmod($p);
     my $y_sum = bint($y)->bmod($p);
 
     Crypt::ECDSA::double_Fp_point( 
       $x_sum->{value}, $y_sum->{value},
-      $p->{value}, $a->{value}, $a_neg->{value}
+      $p->{value}, $a->{value}, $a_neg
     );
     
     return $self->infinity if 
@@ -56,7 +62,7 @@ sub add_on_curve {
     
     my $p = bint( $self->{p} );
     my $a = bint( $self->{a} );
-    my $a_neg = bint( ( $a < 0 ) ? 1 : 0 );
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
     my $x_sum = bint($x1)->bmod($p);
     my $y_sum = bint($y1)->bmod($p);
     my $x2_mod = $x2 % $p;
@@ -65,7 +71,7 @@ sub add_on_curve {
     Crypt::ECDSA::add_Fp_point( 
       $x_sum->{value}, $y_sum->{value}, 
       $x2_mod->{value}, $y2_mod->{value},
-      $p->{value}, $a->{value}, $a_neg->{value}
+      $p->{value}, $a->{value}, $a_neg
     );
     return $self->infinity if 
       $x_sum->is_nan or $y_sum->is_nan or 
@@ -104,7 +110,7 @@ sub multiply_on_curve {
     
     my $p = bint( $self->{p} );
     my $a = bint( $self->{a} );
-    my $a_neg = bint( ( $a < 0 ) ? 1 : 0 );
+    my $a_neg = ( $a < 0 ) ? 1 : 0;
     my $new_x = bint($x)->bmod($p);
     my $new_y = bint($y)->bmod($p);
     $scalar = bint($scalar);
@@ -116,7 +122,7 @@ sub multiply_on_curve {
     if ( $scalar != 1 ) {
         Crypt::ECDSA::multiply_Fp_point(
           $new_x->{value}, $new_y->{value}, $scalar->{value}, 
-          $p->{value}, $a->{value}, $a_neg->{value}
+          $p->{value}, $a->{value}, $a_neg
         );
     }
     return $self->infinity 
@@ -292,7 +298,7 @@ Crypt::ECDSA::Curve::Prime -- Elliptic curves ove F(q), with q prime, for EC cry
 
 =back
 
-=item FUNCTIONS
+=head2 FUNCTIONS
 
 =over 4
 
