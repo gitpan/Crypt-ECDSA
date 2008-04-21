@@ -51,3 +51,8 @@ Revision history for Perl module Crypt::ECDSA
     - added more binary field XS routines
     - test suite update
     - pod update
+    
+0.064 Mon 21 April 2008
+    - C is_F2m_point_on_curve for prime fields was ignoring infinity, fixed
+    - tighten up XS
+    - add example

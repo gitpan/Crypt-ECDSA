@@ -14,7 +14,7 @@ use_ok( 'Crypt::ECDSA::Key' );
 use_ok( 'Crypt::ECDSA::ECDSAVS' );
 use_ok( 'Crypt::ECDSA::PEM' );
 
-# check all points
+# uncomment to sanity check all points generated
 #our $WARN_IF_NEW_POINT_INVALID = 1;
 
 # Test Crypt::ECDSA::Curve and Crypt::ECDSA::Point routines

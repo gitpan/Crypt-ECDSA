@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.063';
+our $VERSION = '0.064';
 
 use base Crypt::ECDSA::Curve;
 
@@ -48,9 +48,14 @@ sub invert_koblitz {
 
 sub is_on_curve {
     my ( $self, $x, $y ) = @_;
+    
+    # point at infinity is defined to be on curve and is (0,0) here
+    return 1 if $x == 0 and $y == 0;
+    
     my $mod = bint( $self->{irreducible} );
     my $a = bint( $self->{a} );
     my $a_neg = ( $a < 0 ) ? 1 : 0;
+    
     return Crypt::ECDSA::is_F2m_point_on_curve( 
       $x->{value}, $y->{value}, $mod->{value}, $a->{value}, $a_neg ); 
 }

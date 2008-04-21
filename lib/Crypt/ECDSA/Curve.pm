@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.063';
+our $VERSION = '0.064';
 
 use strict;
 use warnings;
@@ -32,6 +32,7 @@ sub new {
     $self->{p} = bint( $params{p} );
     $self->{a} = bint( $params{a} );
     $self->{b} = bint( $params{b} );
+    return $self->infinity if $self->{X} == 0 and $self->{Y} == 0;
     bless $self, $class;
     return $self;
 }
@@ -150,7 +151,6 @@ sub curve_order {
 }
 
 sub standard { shift->{standard} }
-
 
 sub infinity {
     my ($self) = @_;

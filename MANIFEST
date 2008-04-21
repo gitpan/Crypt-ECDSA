@@ -14,6 +14,7 @@ lib/Crypt/ECDSA/ECDSAVS.pm
 lib/Crypt/ECDSA/PEM.pm
 lib/Crypt/ECDSA/Curve/Prime.pm
 lib/Crypt/ECDSA/Curve/Koblitz.pm
+examples/ECDSA.pl
 t/01_prime_field.t
 t/02_util.t
 t/03_binary_field.t

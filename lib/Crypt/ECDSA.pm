@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.063';
+our $VERSION = '0.064';
 
 use strict;
 use warnings;
@@ -202,7 +202,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
     my $msg = "This is a test message for perl ecdsa."
 
-    my ( $r, $s ) = ecdsa->signature( message => $msg );
+    my ( $r, $s ) = $ecdsa->signature( message => $msg );
 
     my $verify_ok = $ecdsa->verify( r => $r, 's' => $s, message => $msg );
 

@@ -7,7 +7,7 @@ require 5.008;
 use Crypt::ECDSA::Util qw( bint hex_bint bigint_from_coeff );
 use Crypt::ECDSA qw( multiply_F2m );
 
-# check all points
+# uncomment to sanity check all points generated
 #our $WARN_IF_NEW_POINT_INVALID = 1;
 
 use_ok('Crypt::ECDSA::Curve::Koblitz');
