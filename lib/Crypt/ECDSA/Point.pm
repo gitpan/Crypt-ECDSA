@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Point;
 
-our $VERSION = '0.063';
+our $VERSION = '0.065';
 
 use strict;
 use warnings;
@@ -22,8 +22,9 @@ sub new {
         $self->{X}     = bint( $args{X} );
         $self->{Y}     = bint( $args{Y} );
     }
-    $self->{order} =
-      $args{order} ? bint( $args{order} ) : $self->{curve}->{order};
+    $self->{order} = bint( $args{order} || $self->curve->{point_order} ||
+        $self->{curve}->{r} || $self->{curve}->{n} || $self->{curve}->{p} );
+    carp("Missing order for new point") unless $self->{order};
     $self->{is_infinity} = ( $args{is_infinity} ? 1 : 0 );
     
     carp "New Point ( $self->{X}  , $self->{Y}  ) is not on curve"

@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Crypt-ECDSA
-version:             0.064
+version:             0.065
 abstract:            Digital Signature using Elliptic Curve Cryptography
 license:             perl
 author:              

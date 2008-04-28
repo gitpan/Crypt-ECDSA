@@ -243,7 +243,7 @@ sub from_octet {
 
 =head1 NAME
 
-Crypt::ECDSA::Curve::Prime -- Elliptic curves ove F(q), with q prime, for EC cryptography
+Crypt::ECDSA::Curve::Prime -- Elliptic curves over F(q), with q prime, for EC cryptography
 
 =head1 DESCRIPTION
 

@@ -1,58 +1,68 @@
 Revision history for Perl module Crypt::ECDSA
 
-0.10 Fri Feb 23 13:33:28 2007
-    - original version
+0.065
+    - fixed memory leak in GMP XS code
+    - added more XS
+    - clarified (by changing variable and hash field names) some of the method 
+        code's teminology regarding curve order versus point order versus 
+        modulus in curve.pm and point.pm
+    - added a side channel snooping protection option:
+        Crypt::ECDSA::sidechannel_protection(1);  # slightly safer
+    - benchmarking tests
 
-0.02 Sat Feb 24 12:34:37 2007
-    - pod fixes
-    
-0.021 Sat Feb 24 14:18:31 2007
-    -  prerequisite added to Makefile.PL
-    
-0.04 Sun Feb 25 20:26:05 2007
-    - XS added
-    - Dropped Math::BigInt::GMP and Math::GMP combo for Math::GMPz (faster)
-    
-0.041 Tue 27 Feb 2007 21:12:57
-    - clean up XS
-    - pod update
-
-0.045 Thu Mar 1 2007
-    - added PEM file handling
-    - code cleanup --  unused modules
-    - adjusted Makefile.PL to require 5.8
-    
-0.046 Fri Mar 16 2007
-    - added tests of PEM encryption
-    
-0.047 Sat Mar 17 2007
-    - some test files not included in last distribution, added back in
-
-0.05  Sun Mar 17 2007
-    - fixed bug in modular inverse during siggen
-
-0.051 Sum Mar 17 2007
-    - testing requires several modules to be installed, added to Makefile.PL
-
-0.052 Fri 23 March 2007
-    - added missing test file
-    
-0.060 Sun 30 March 2008
-    - converted math routines to use Math:::BigInt::GMP, for better compatibility
-
-0.061 Wed 2 April 2008
-    - fixed a side effect on args passsed in to signature verify function
-
-0.062 Fri 5 April 2008
-    - added more XS routines
-    - removed an undocumented dependency
+0.064 Mon 21 April 2008
+    - fix of C code is_Fp_point_on_curve for prime fields ignoring infinity
+    - tighten up XS
+    - add example
 
 0.063 Fri 18 April 2008
     - added more binary field XS routines
     - test suite update
     - pod update
     
-0.064 Mon 21 April 2008
-    - C is_F2m_point_on_curve for prime fields was ignoring infinity, fixed
-    - tighten up XS
-    - add example
+0.062 Fri 5 April 2008
+    - added more XS routines
+    - removed an undocumented dependency
+
+0.061 Wed 2 April 2008
+    - fixed a side effect on args passsed in to signature verify function
+
+0.060 Sun 30 March 2008
+    - converted math routines to use Math:::BigInt::GMP, for better compatibility
+
+0.052 Fri 23 March 2007
+    - added missing test file
+    
+0.051 Sum Mar 17 2007
+    - testing requires several modules to be installed, added to Makefile.PL
+
+0.05  Sun Mar 17 2007
+    - fixed bug in modular inverse during siggen
+
+0.047 Sat Mar 17 2007
+    - some test files not included in last distribution, added back in
+
+0.046 Fri Mar 16 2007
+    - added tests of PEM encryption
+    
+0.045 Thu Mar 1 2007
+    - added PEM file handling
+    - code cleanup --  unused modules
+    - adjusted Makefile.PL to require 5.8
+    
+0.041 Tue 27 Feb 2007 21:12:57
+    - clean up XS
+    - pod update
+
+0.04 Sun Feb 25 20:26:05 2007
+    - XS added
+    - Dropped Math::BigInt::GMP and Math::GMP combo for Math::GMPz (faster)
+    
+0.021 Sat Feb 24 14:18:31 2007
+    -  prerequisite added to Makefile.PL
+    
+0.02 Sat Feb 24 12:34:37 2007
+    - pod fixes
+
+0.10 Fri Feb 23 13:33:28 2007
+    - original version

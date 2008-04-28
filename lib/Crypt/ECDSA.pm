@@ -1,6 +1,6 @@
 package Crypt::ECDSA;
 
-our $VERSION = '0.064';
+our $VERSION = '0.065';
 
 use strict;
 use warnings;
@@ -12,7 +12,8 @@ use Crypt::ECDSA::Key;
 require Exporter;
 require DynaLoader;
 our @ISA = qw(Exporter DynaLoader);
-our @EXPORT = qw( multiply_F2m invert_F2m gmp_is_probably_prime );
+our @EXPORT = qw( multiply_F2m invert_F2m gmp_is_probably_prime 
+                ecdsa_sign_hash ecdsa_verify_hash );
 
 bootstrap Crypt::ECDSA $VERSION;
 
@@ -55,12 +56,6 @@ sub make_text_digest {
     return hex_bint( $self->{algo}->hexdigest );
 }
 
-sub _make_ephemeral_k {
-    my( $self, $n ) = @_;
-    my $len = ( length( $n->as_hex ) + 6 ) * 16;
-    return random_bits($len) % ( $n - 1 ) + 1;
-}
-
 sub signature {
     my ( $self, %args ) = @_;
 
@@ -71,8 +66,17 @@ sub signature {
         carp(" Bad private key for signature");
         return;
     }
-    my $q  = bint( $key->curve->q );
-    my $n  = bint( $G->{order} );
+    my $Gx = $G->{X};
+    my $Gy = $G->{Y};
+    my $d = bint( $self->{key}->{d} );
+    my $a = $key->curve->{a};
+    my $a_neg = ($a < 0 ) ? 1 : 0;
+    my $r = bint(1);
+    my $s = bint(1);
+    my $max_tries = 120;
+    my $is_binary = $key->curve->{irreducible} ? 1 : 0;      
+    my $n   = bint( $key->G->order );
+    my $mod = bint( $key->curve->{modulus} );
     unless($n) {
         carp("Cannot sign curve without a point of known order");
         return;
@@ -88,27 +92,23 @@ sub signature {
       || ( $args{message} ? $self->make_text_digest($args{message}) :
            croak("Need a message or the hash of a message for the signature" ) )
     ;
-    my $d = bint( $self->{key}->{d} );
-    my $max_tries = 120;
-    my($r, $s);
-    while ( $max_tries-- ) {
-        my $k = $self->_make_ephemeral_k($q);
-        my $kG = $G * $k;
-        $r  = bint( $kG->X % $n ) ;
-        next if $r == 0;
-        my $kinv = bint();
-        $kinv = $k->bmodinv( $n ) or next;
-        $s = bint( ( $kinv * ( $e + ($d * $r) % $n ) ) % $n );
-        next if $s == 0;
+    ecdsa_sign_hash( $r->{value}, $s->{value}, $e->{value}, $Gx->{value}, 
+      $Gy->{value}, $n->{value}, $d->{value}, $mod->{value}, $a->{value}, 
+      $a_neg, $is_binary, $max_tries );
+      
+    warn "XS signature: r is $r, s is $s\n" if $DEBUG;
+
+    if( $r != 0 ) {
         if( $args{sig_file} ) {
             Crypt::ECDSA::PEM::write_ECDSA_signature_file
               ( $args{sig_file}, bint($r), bint($s) );
         }
-        warn "signature: r is $r, s is $s\n" if $DEBUG;
         return ( $r, $s );
     }
-    $self->{_last_ECDSA_error} =
+    else { 
+        $self->{_last_ECDSA_error} =
       "Failed with getting digest (r,s) in signature after $max_tries tries";
+    }
     return;
 }
 
@@ -124,14 +124,20 @@ sub verify_public_key {
 sub verify {
     my ( $self, %args ) = @_;
     my $key = $self->key;
-    # some error checks
-    my $q = $key->curve->q;
-    my $G = $key->{G};
     unless( defined $key->{Q} ) {
         carp( "Need a Q point in key for ecdsa verify" );
         return;
     }
-    my $n = $key->curve->order;
+    my $Gx = $key->{G}->{X};
+    my $Gy = $key->{G}->{Y};
+    my $Qx = $key->{Q}->{X};
+    my $Qy = $key->{Q}->{Y};
+    my $d = bint( $self->{key}->{d} );
+    my $a = $key->curve->{a};
+    my $a_neg = ($a < 0 ) ? 1 : 0;
+    my $is_binary = $key->curve->{irreducible} ? 1 : 0;      
+    my $n   = bint( $key->G->order );
+    my $mod = bint( $key->curve->modulus );
     unless($n) {
         carp("Cannot verify public point without knowing its base point's order");
         return;
@@ -140,8 +146,6 @@ sub verify {
       ? Crypt::ECDSA::PEM::read_ECDSA_signature_file( $args{sig_file} )
       : ( bint( $args{r} ), bint( $args{'s'} ) )
     ;
-    return if $r < 1 or $r >= $q;
-    return if $s < 1 or $s >= $q;
     if( $args{ message_file} ) {
         open( my $infh, '<', $args{message_file} )
           or croak( "cannot open file $args{message_file}: $!" );
@@ -153,23 +157,20 @@ sub verify {
       || ( $args{message} ? $self->make_text_digest($args{message}) :
            croak("Need a message or the hash of a message for the signature" ) )
     ;
-    my $w  = bint();
-    $w = $s->bmodinv($n);
-    unless( $w ) {
-        carp( "Error: s and n are not coprime in signature verify" );
-        return;
-    }
-    my $u_g = bint();
-    my $u_r = bint();
-    $u_g = ( $e * $w ) % $n;
-    $u_r = ( $r * $w ) % $n;
-    my $prod = $G * $u_g + $key->Q * $u_r;
-    return 1 if $prod->X % $n  == $r;
-
-    warn "verify: r is $r and prod->X mod n is ", $prod->X % $n, "\n" if $DEBUG;
-
-    return 0;
+    warn "begin verify:  r is $r, s is $s\n" if $DEBUG;
+    
+    return ecdsa_verify_hash( $r->{value}, $s->{value}, $e->{value}, 
+      $Gx->{value}, $Gy->{value}, $Qx->{value}, $Qy->{value}, 
+      $n->{value}, $mod->{value}, $a->{value}, $a_neg, $is_binary );
 }
+
+# this is a function NOT a method (no self argument)
+sub sidechannel_protection {
+    my( $setting ) = @_;
+    return ( defined $setting ) ?
+        _set_sidechannel_protection($setting) : _get_sidechannel_protection();
+}
+
 
 =head1 NAME
 
@@ -273,7 +274,7 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
 
 =item B<verify_public_key>
 
-  Verify a public key point, as in the Crypt::ECDSA::Key method
+  Verify a public key point, as in the Crypt::ECDSA::Key methods
 
 =item B<verify>
 
@@ -293,6 +294,46 @@ Crypt::ECDSA -- Elliptical Cryptography Digital Signature Algorithm
   been written.
 
   Verify as message given  r, s, and either message or its digest
+
+=back
+
+=head2 Package Non-object (Static) Functions
+
+=over 4
+
+=item B<ecdsa_sign_hash>
+
+ecdsa_sign_hash( r, s, hash, gx, gy, q, d, mod, a, is_binary, max_tries );
+  
+Direct call to the XS routine, with numbers as Math::BigInt::GMP values fields.
+Places the r and s values of the signature in r and s.
+  
+=item B<ecdsa_verify_hash>
+
+ecdsa_verify_hash( r, s, hash, gx, gy, qx, qy, q, mod, a, is_binary );
+
+Direct call to the XS routine.  Returns 1 if hash verifies, 0 if not.
+
+=item B<sidechannel_protection>
+
+  sidechannel_protection(1);  # slightly safer from hardware snooping
+
+  $side_channels_normalized = sidechannel_protection();  # 1
+  
+  sidechannel_protection(0);  # slightly faster with prime field multiplies
+  
+Off by default.
+
+Set or get an option to normalize doubling/adding calculation methods during 
+ECC multiplication to make side-channel snooping more difficult. This is a 
+security feature which seems to incur a 0 to 10% performance hit, less with
+binary curves than prime field curves. If the ECC computation is to be run on 
+a PC or larger general purpose computing device, side-channel vulnerability 
+protection is probably unnecessary since most persons with access to the 
+inner physical side channels of such a device would also be able to access 
+protected data more simply.  With dedicated small devices such protection may 
+be of value.  It may be useful to check the specifics of your CPU and/or device
+to see if side channels would be an issue.
 
 =back
 

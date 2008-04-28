@@ -157,10 +157,10 @@ $pG = Crypt::ECDSA::Point->new(
 );
 ok( $curve_K283->is_on_curve( $pG->X, $pG->Y ), "G is on K283" );
 $p_prod = $pG * $curve_K283->{n};
-ok( $p_prod->is_point_at_infinity, "point G times n is infinity for K-283" );
+ok( $p_prod->is_point_at_infinity, "point G times n ( " . 
+    $p_prod->{Y} . ", " . $p_prod->{Y} . " ) is infinity for K-283" );
 $irr = bigint_from_coeff( $pG->{curve}->{polynomial} );
-ok( $irr == $pG->{curve}->{irreducible},
-    "Check polynomial basis for K-283" );
+ok( $irr == $pG->{curve}->{irreducible}, "Check polynomial basis for K-283" );
 
 # NIST K-409
 
@@ -168,14 +168,14 @@ $pG = Crypt::ECDSA::Point->new(
     X     => $named_curve->{'EC2N-409'}->{G_x},
     Y     => $named_curve->{'EC2N-409'}->{G_y},
     curve => $curve_K409,
-    order => $named_curve->{'EC2N-409'}->{n},
+    order => $curve_K409->{point_order},
 );
 ok( $curve_K409->is_on_curve( $pG->X, $pG->Y ), "G is on K409" );
 $p_prod = $pG * $curve_K409->{n};
-ok( $p_prod->is_point_at_infinity, "point G times n is infinity for K-409" );
+ok( $p_prod->is_point_at_infinity, "point G times n ( " . 
+    $p_prod->{Y} . ", " . $p_prod->{Y} . " ) is infinity for K-409" );
 $irr = bigint_from_coeff( $pG->{curve}->{polynomial} );
-ok( $irr == $pG->{curve}->{irreducible},
-    "Check polynomial basis for K-409" );
+ok( $irr == $pG->{curve}->{irreducible}, "Check polynomial basis for K-409" );
 
 
 # NIST K-571
@@ -184,11 +184,11 @@ $pG = Crypt::ECDSA::Point->new(
     X     => $named_curve->{'EC2N-571'}->{G_x},
     Y     => $named_curve->{'EC2N-571'}->{G_y},
     curve => $curve_K571,
-    order => $named_curve->{'EC2N-571'}->{n},
+    order => $curve_K571->{point_order},
 );
 ok( $curve_K571->is_on_curve( $pG->X, $pG->Y ), "G is on K571" );
-$p_prod = $pG * $curve_K163->{n};
-ok( $p_prod->is_point_at_infinity, "point G times n is infinity for K-571" );
+$p_prod = $pG * $curve_K571->{n};
+ok( $p_prod->is_point_at_infinity, "point G times n ( " . 
+    $p_prod->{Y} % $pG->{order} . ", " . $p_prod->{Y} % $pG->{order} . " ) is infinity for K-571" );
 $irr = bigint_from_coeff( $pG->{curve}->{polynomial} );
-ok( $irr == $pG->{curve}->{irreducible},
-    "Check polynomial basis for K-571" );
+ok( $irr == $pG->{curve}->{irreducible}, "Check polynomial basis for K-571" );

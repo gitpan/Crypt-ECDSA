@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve;
 
-our $VERSION = '0.064';
+our $VERSION = '0.065';
 
 use strict;
 use warnings;
@@ -48,6 +48,9 @@ sub _make_named {
     $self->{p} = bint( $curve_params->{p} );
     $self->{a} = bint( $curve_params->{a} );
     $self->{b} = bint( $curve_params->{b} );
+    $self->{r} = bint( $curve_params->{r} );
+    $self->{n} = bint( $curve_params->{n} );
+    croak("must specify point order") unless $self->{n} or $self->{r};
     $self->{N} = $curve_params->{N} if $curve_params->{N};
     $self->{p} = two_pow( $curve_params->{N} ) if $curve_params->{N} and !$self->{p};
     if ( $curve_params->{polynomial} ) {
@@ -56,29 +59,22 @@ sub _make_named {
         $self->{tau_s0}      = bint( $curve_params->{tau_s0} );
         $self->{tau_s1}      = bint( $curve_params->{tau_s1} );
         $self->{tau_V}       = bint( $curve_params->{tau_V} );
-        $self->{q}           = two_pow( bint( $curve_params->{N} ) );
+        $self->{n}           = $curve_params->{n};
+        $self->{q}           = two_pow( $self->{polynomial}->[0] );
     }
     else {
         $self->{q}           = $self->{p};
     }
+    $self->{cofactor} = bint( $curve_params->{h} );
 
     # curve order is base point order * cofactor ( called r * h by NIST )
-    $self->{cofactor} = bint( $curve_params->{h} );
-    if ( $curve_params->{r} ) {
-        $self->{point_order} = bint( $curve_params->{r} );
-    }
-    elsif ( $curve_params->{n} ) {
-        $self->{point_order} = bint( $curve_params->{n} );
-    }
-    else {
-        # FIXME: probably need to calculate this here instead of this poor guess
-        # but calculating the order of a point takes a while-- this may be 0
-        $self->{point_order} = bint( $self->{p} / $self->{cofactor} );
-    }
-    $self->{order} = $self->{point_order};
-    $self->{curve_order} = $self->{point_order} * $self->{cofactor};    
+    $self->{point_order} = $self->{n} || $self->{r};
+    $self->{curve_order} = $self->{point_order} * $self->{cofactor};
     $self->{G_x} = bint( $curve_params->{G_x} );
     $self->{G_y} = bint( $curve_params->{G_y} );
+    
+    # curve modulus is either the irreducible polynomial or the prime p
+    $self->{modulus} = bint( $self->{irreducible} || $self->{p} );
 
     return $self;
 }
@@ -92,6 +88,7 @@ sub _make_generic_prime_curve {
     $self->{b} = bint( $params{b} );
     croak( "New generic prime curve needs p => prime, a => a, and b => b" )
       unless $self->{p} and defined $self->{a} and defined $self->{b};
+    $self->{order} = $self->{p};
     return $self;
 }
 
@@ -110,6 +107,7 @@ sub _make_generic_binary_curve {
 "New generic binary curve needs N => 2**N order, a => a, and b => b, and either a polynomial arrayref or a bigint for the irreducicible polynomial"
       ) unless $self->{N} and defined $self->{a} and defined $self->{b} 
         and $self->{irreducible};
+    $self->{order} = $self->{irreducible};
     return $self;
 }
 
@@ -148,6 +146,12 @@ sub curve_order {
     my ( $self, $new_curve_order ) = @_;
     $self->{p} = bint($new_curve_order) if defined $new_curve_order;
     return $self->{curve_order};
+}
+
+sub modulus {
+    my ( $self, $new_modulus ) = @_;
+    $self->{p} = bint($new_modulus) if defined $new_modulus;
+    return $self->{modulus};
 }
 
 sub standard { shift->{standard} }
@@ -333,7 +337,7 @@ $named_curve = {
         a          => 0,
         h          => 4,
         n          =>
-'33052798439512429475957654016385519914202341482140609642324395022880711289249191050673258457777458014096366590617731358671',
+'330527984395124299475957654016385519914202341482140609642324395022880711289249191050673258457777458014096366590617731358671',
         G_x =>
 '0x060f05f658f49c1ad3ab1890f7184210efd0987e307c84c27accfb8f9f67cc2c460189eb5aaaa62ee222eb1b35540cfe9023746',
         G_y =>
@@ -353,7 +357,7 @@ $named_curve = {
         polynomial => [ 571, 10, 5, 2, 0 ],
         a          => 0,
         h          => 4,
-        n          =>
+        n          => 
 '1932268761508629172347675945465993672149463664853217499328617625725759571144780212268133978522706711834706712800825351461273674974066617311929682421617092503555733685276673',
         G_x =>
 '0x26eb7a859923fbc82189631f8103fe4ac9ca2970012d5d46024804801841ca44370958493b205e647da304db4ceb08cbbd1ba39494776fb988b47174dca88c7e2945283a01c8972',
@@ -470,8 +474,6 @@ Crypt::ECDSA::Curve -- Base class for ECC curves
 
   returns parameter p in the equation-- this is the field modulus parameter for prime curves
   
-  
- 
 =item B<order>
 
   my $param = $curve->order;
@@ -484,6 +486,13 @@ Crypt::ECDSA::Curve -- Base class for ECC curves
 
   Returns the curve order if known. This might calculate the order some day.
   It does not in this version.
+
+=item B<modulus>
+
+  my $divisor = $curve->modulus;
+  
+  Returns the mathmetical divisor used to reduce numbers in the field.  This is either the 
+  prime of an Fp field curve or the irreducible polynomial of a binary field curve.
 
 =item B<infinity>
 

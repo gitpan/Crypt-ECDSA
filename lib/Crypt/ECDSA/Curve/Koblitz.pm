@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Curve::Koblitz;
 
-our $VERSION = '0.064';
+our $VERSION = '0.065';
 
 use base Crypt::ECDSA::Curve;
 
@@ -54,10 +54,9 @@ sub is_on_curve {
     
     my $mod = bint( $self->{irreducible} );
     my $a = bint( $self->{a} );
-    my $a_neg = ( $a < 0 ) ? 1 : 0;
     
     return Crypt::ECDSA::is_F2m_point_on_curve( 
-      $x->{value}, $y->{value}, $mod->{value}, $a->{value}, $a_neg ); 
+      $x->{value}, $y->{value}, $mod->{value}, $a->{value} ); 
 }
 
 sub double_on_curve {
@@ -138,7 +137,6 @@ sub multiply_on_curve {
     my $mod = bint( $self->{irreducible} );    
     my $a = bint( $self->{a} );
     my $a_neg = ( $a < 0 ) ? 1 : 0;
-    my $scalar_neg = ( $scalar < 0 ) ? 1 : 0;
 
     if( $scalar == 1 ) {
         return Crypt::ECDSA::Point->new(
@@ -157,9 +155,13 @@ sub multiply_on_curve {
         );
     }
     else {
+        if( $scalar < 0 ) {
+            $scalar->bneg;
+            $y_product = $y_product ^ $x_product;
+        }
         Crypt::ECDSA::multiply_F2m_point(
           $x_product->{value}, $y_product->{value}, $scalar->{value}, 
-          $mod->{value}, $a->{value}, $a_neg, $scalar_neg
+          $mod->{value}, $a->{value}, $a_neg
         );
         return $self->infinity if $x_product == 0 and $y_product == 0;
         return Crypt::ECDSA::Point->new(
