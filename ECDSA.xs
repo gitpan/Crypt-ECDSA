@@ -10,7 +10,7 @@
 /*
 Crypt::ECDSA.xs, prime and finite binary field math routines for better speed
 This code copyright (C) William Hererra, 2007, 2008, under terms of Perl itself
-This version date:  27 April 2008
+This version date:  28 April 2008
 */
 
 
@@ -21,6 +21,7 @@ This version date:  27 April 2008
 typedef struct {
     gmp_randstate_t state;
     int normalize_sidechannnels;
+    int start_rand;
     int reserved;
 } my_cxt_t;
 
@@ -61,7 +62,7 @@ void _make_ephemeral_test_k( mpz_t k, mpz_t n ) {
 
     mpz_init(temp1);
     mpz_init(temp2);
-      
+    
     mpz_urandomb( temp1, MY_CXT.state, mpz_sizeinbase( n, 2 ) + 64 ); 
     mpz_sub_ui( temp2, n, 1 );
     mpz_mod( temp1, temp1, temp2 );
@@ -788,6 +789,9 @@ BOOT:
 {
     MY_CXT_INIT;
     gmp_randinit_default(MY_CXT.state);
+    srand( (unsigned int) time(NULL) );
+    MY_CXT.start_rand = rand();    
+    gmp_randseed_ui( MY_CXT.state, MY_CXT.start_rand );
     MY_CXT.normalize_sidechannnels = 0;
     MY_CXT.reserved = 0;
 }
@@ -926,5 +930,6 @@ ecdsa_verify_hash( r, s, hash, gx, gy, qx, qy, n, mod, a, a_neg, is_binary )
 	SV *	a
 	SV *	a_neg
 	SV *	is_binary
+
 
 

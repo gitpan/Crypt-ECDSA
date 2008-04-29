@@ -1,6 +1,6 @@
 package Crypt::ECDSA::PEM;
 
-our $VERSION = '0.063';
+our $VERSION = '0.067';
 
 use strict;
 use warnings;
@@ -34,8 +34,8 @@ sub new {
     my ( $class, %args ) = @_;
     my $self = {};
     bless $self, $class;
-    $self->{Password} = $args{Password} if $args{Password};
-    if ( $args{Filename} ) {
+    $self->{password} = $args{password} if $args{password};
+    if ( $args{filename} ) {
         $self->{filename} = $args{filename};
         $self->read_PEM(%args);
     }
@@ -45,7 +45,7 @@ sub new {
 # file input
 sub read_PEM {
     my ( $self, %args ) = @_;
-    open( my $fh, '<', $args{Filename} )
+    open( my $fh, '<', $args{filename} )
       or croak "Cannot open file $args{filename} for reading: $!";
     $args{fh} = $fh;
     my $retval = $self->read_PEM_fh(%args);
@@ -58,7 +58,7 @@ sub read_PEM_fh {
     my ( $self, %args ) = @_;
     my $infh = $args{fh} or return;
     my @pem_lines = <$infh>;
-    @pem_lines = decrypt_pem( \@pem_lines, $args{Password} ) if $args{Password};
+    @pem_lines = decrypt_pem( \@pem_lines, $args{password} ) if $args{password};
     my $buf = '';
     my %names;
     my $working_key;
@@ -148,15 +148,15 @@ sub write_PEM {
     my ( $self, %args ) = @_;
     my $key      = $args{key};
     my $filename = $args{filename};
-    my $password = $args{Password};
+    my $password = $args{password};
     my $cipher   = $args{cipher};
     my $txt;
     if ( $args{private} ) {
-        $txt = $self->key_to_private_pem( $key, $password, $cipher );
+        $txt = $self->key_to_private_PEM( $key, $password, $cipher );
     }
     else {
         warn "making public key PEM" if $DEBUG;
-        $txt = $self->key_to_public_pem($key);
+        $txt = $self->key_to_public_PEM($key);
     }
     open my $outfh, '>', $filename or croak "Cannot write to $filename: $!";
     binmode $outfh;
@@ -165,7 +165,7 @@ sub write_PEM {
     return $written;
 }
 
-sub key_to_private_pem {
+sub key_to_private_PEM {
     my ( $self, $key, $password, $cipher ) = @_;
     $cipher = 'Rijndael' unless $cipher;
     my $version      = 1;
@@ -553,18 +553,18 @@ Crypt::ECDSA::PEM -- ECDSA PEM file management for elliptic key DSA cryptography
 =item B<write_PEM>
 
   $pem->write_PEM( filename => $outfile, private => 1, 
-    Password => $pwrd, cipher => 'Rijndael' );
+    password => $pwrd, cipher => 'Rijndael' );
   
   Write a PEM file.  The private parameter indicates to write out the 
   private key.  Otherwise the public key only is wriiten to the file.
-  The Password is for encryption if desired. cipher => $cipher is for the
+  The password is for encryption if desired. cipher => $cipher is for the
   cipher method: 'Rijndael' (AES) is suggested, but if your installation has them,
   the module can use DES_EDE3 and Blowfish as well.
   
   
-=item B<key_to_private_pem>
+=item B<key_to_private_PEM>
 
-    my $pem_text = $pem->key_to_private_pem( $key, $password );
+    my $pem_text = $pem->key_to_private_PEM( $key, $password );
     print $pem_text;
     
     Create and return a PEM file containing the pirvate and public keys as 

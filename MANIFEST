@@ -15,6 +15,7 @@ lib/Crypt/ECDSA/PEM.pm
 lib/Crypt/ECDSA/Curve/Prime.pm
 lib/Crypt/ECDSA/Curve/Koblitz.pm
 examples/ecdsa_example.pl
+examples/verify_pm_signatures.pl
 t/01_prime_field.t
 t/02_bench.t
 t/03_binary_field.t

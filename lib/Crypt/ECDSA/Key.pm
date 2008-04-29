@@ -1,6 +1,6 @@
 package Crypt::ECDSA::Key;
 
-our $VERSION = '0.063';
+our $VERSION = '0.067';
 
 use strict;
 no warnings;
@@ -10,6 +10,7 @@ use Carp 'croak';
 use Crypt::ECDSA::Curve::Prime;
 use Crypt::ECDSA::Curve::Koblitz;
 use Crypt::ECDSA::Util qw( bint hex_bint random_bits );
+use Crypt::ECDSA::PEM;
 
 our $standard_curve = $Crypt::ECDSA::Curve::named_curve;
 
@@ -26,11 +27,13 @@ sub new {
     if( $args{PEM} ) {
         #read parameters from a PEM file
         my $pem         = Crypt::ECDSA::PEM->new( 
-          Filename => $args{PEM}, Password => $args{Password} );
-        $args{standard} = $pem->{private_pem_tree}->{standard};
-        $args{Q}        = $pem->{private_pem_tree}->{Q};
-        $args{d}        = $pem->{private_pem_tree}->{d};
-        $args{order}    = $pem->{private_pem_tree}->{order};
+          filename => $args{PEM}, password => $args{password} );
+        if( exists $pem->{private_pem_tree}->{standard} ) {
+            $args{standard} = $pem->{private_pem_tree}->{standard};
+            $args{Q}        = $pem->{private_pem_tree}->{Q};
+            $args{d}        = $pem->{private_pem_tree}->{d};
+            $args{order}    = $pem->{private_pem_tree}->{order};
+        }
     }
     if ( $args{standard} ) {
         # using a NIST or other standard curve (good idea)
@@ -171,7 +174,7 @@ sub read_PEM {
     my( $self, %args ) = @_;
     if($args{filename} and $args{private}) {
         my $pem         = Crypt::ECDSA::PEM->new( 
-          Filename => $args{filename}, Password => $args{Password} );
+          filename => $args{filename}, password => $args{password} );
         $self->{Q}        = $pem->{private_pem_tree}->{Q};
         $self->{d}        = $pem->{private_pem_tree}->{d};
         $self->{order}    = $pem->{private_pem_tree}->{order};
@@ -192,8 +195,8 @@ sub write_PEM {
         my $pem = Crypt::ECDSA::PEM->new();      
         my %pem_args;
         $pem_args{key} = $self;
-        $pem_args{Filename} = $args{Filename};
-        $pem_args{Password} = $args{Password};
+        $pem_args{filename} = $args{filename};
+        $pem_args{password} = $args{password};
         return $pem->write_PEM( %pem_args );
     }
     return;
@@ -284,7 +287,7 @@ sub new_key_values {
   $bytes_written = $key->write_PEM( filename => $file, private => 1 );
   
   Write the key to a PEM file.  Private key is written if the 'private' 
-  argument is nonzero.
+  argument is nonzero. A password => "password" argument is permitted.
 
 =back
 
