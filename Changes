@@ -1,12 +1,15 @@
 Revision history for Perl module Crypt::ECDSA
 
+0.68
+    - private key not always read from private PEM file, fixed
+    
 0.67
     - changed random key generation initialization of seed
     - compatibility change:  changed named arguments to mostly lowercase
          (except acronyms) for consistency
     - added another example, with signature of the package files
 
-0.066
+0.065
     - fixed memory leak in GMP XS code
     - added more XS
     - clarified (by changing variable and hash field names) some of the method 

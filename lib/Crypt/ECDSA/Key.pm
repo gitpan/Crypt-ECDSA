@@ -196,7 +196,8 @@ sub write_PEM {
         my %pem_args;
         $pem_args{key} = $self;
         $pem_args{filename} = $args{filename};
-        $pem_args{password} = $args{password};
+        $pem_args{private}  = 1;
+        $pem_args{password} = $args{password} if $args{password};
         return $pem->write_PEM( %pem_args );
     }
     return;

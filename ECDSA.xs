@@ -10,7 +10,7 @@
 /*
 Crypt::ECDSA.xs, prime and finite binary field math routines for better speed
 This code copyright (C) William Hererra, 2007, 2008, under terms of Perl itself
-This version date:  28 April 2008
+This version date:  30 April 2008
 */
 
 
