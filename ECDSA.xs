@@ -93,7 +93,7 @@ void mul_F2m( mpz_t result, mpz_t x, mpz_t y, mpz_t mod ) {
     long i, r;
     mpz_t product, accum, yval;
     
-    mpz_init(accum);
+    mpz_init_set_ui( accum, 0 );
     mpz_init_set( yval, y );
     r = mpz_sizeinbase( x, 2 );
     

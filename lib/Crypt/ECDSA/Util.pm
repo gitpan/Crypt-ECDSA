@@ -1,12 +1,12 @@
 package Crypt::ECDSA::Util;
 
-our $VERSION = '0.063';
+our $VERSION = '0.069';
 
 use strict;
 use warnings;
 require Exporter;
 our @ISA    = qw(Exporter);
-our @EXPORT = qw(
+our @EXPORT_OK = qw(
   two_pow random_bits bigint_from_coeff is_probably_prime
   make_pq_seed_counter_new make_seed_and_pq_with_sha1
   validate_pq_seed_counter_sha1 bint hex_bint random_hex_bytes 

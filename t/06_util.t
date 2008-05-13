@@ -1,9 +1,9 @@
-use Test::More tests => 18;
+use Test::More tests => 17;
 
 use strict;
 require 5.008;
 
-use_ok( 'Crypt::ECDSA::Util' );
+use Crypt::ECDSA::Util qw( bint hex_bint );
 
 # check all points
 #our $WARN_IF_NEW_POINT_INVALID = 1;

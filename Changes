@@ -1,9 +1,12 @@
 Revision history for Perl module Crypt::ECDSA
 
-0.68
+0.069
+    - change method export @EXPORT to @EXPORT_OK in ECDSA.pm
+
+0.068
     - private key not always read from private PEM file, fixed
     
-0.67
+0.067
     - changed random key generation initialization of seed
     - compatibility change:  changed named arguments to mostly lowercase
          (except acronyms) for consistency

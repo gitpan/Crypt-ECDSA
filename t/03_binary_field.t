@@ -8,7 +8,7 @@ use Crypt::ECDSA::Util qw( bint hex_bint bigint_from_coeff );
 use Crypt::ECDSA qw( multiply_F2m );
 
 # uncomment to sanity check all points generated
-#our $WARN_IF_NEW_POINT_INVALID = 1;
+our $WARN_IF_NEW_POINT_INVALID = 1;
 
 use_ok('Crypt::ECDSA::Curve::Koblitz');
 
@@ -39,7 +39,7 @@ $F2M->{irreducible} = bigint_from_coeff($coeff);
 
 my $Gx = bint('0x17232ba853a7e731af129f22ff4149563a419c26bf50a4c9d6eefad6126');
 my $Gy = bint('0x1db537dece819b7f70f555a67c427a8cd9bf18aeb9b56e0c11056fae6a3');
-my $b  = 1;
+my $b  = 1; 
 
 my $lhs = $F2M->multiply_koblitz( $Gy, $Gy ) ^ $F2M->multiply_koblitz( $Gy, $Gx );
 my $rhs = $F2M->multiply_koblitz( $F2M->multiply_koblitz( $Gx, $Gx ), $Gx ) + $b;

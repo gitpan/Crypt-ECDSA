@@ -2,7 +2,7 @@ use Test::More tests => 8;
 
 use strict;
 use warnings;
-use Crypt::ECDSA;
+use Crypt::ECDSA qw( ecdsa_sign_hash ecdsa_verify_hash );;
 use Crypt::ECDSA::Point;
 use Crypt::ECDSA::Util qw( bint );
 
@@ -10,7 +10,7 @@ SKIP:
 {
 
     eval "use Time::HiRes";
-    skip "because Time::HighRes is required for benchmarking", 4 if $@;
+    skip "because Time::HighRes is required for benchmarking", 8 if $@;
 
     # NIST P-256
     my $curve_P256 = Crypt::ECDSA::Curve::Prime->new( standard => 'ECP-256' );
